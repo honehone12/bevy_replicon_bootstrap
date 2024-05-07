@@ -1,1 +1,1 @@
-Network stack for Bevy Engine on top of bevy_replicon.
+Networking for action games on top of bevy_replicon.
