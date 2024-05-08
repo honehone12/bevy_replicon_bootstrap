@@ -1,14 +1,11 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub mod dev;
+pub mod quick_net;
+pub mod core;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn unimplemented_test() {
+        unimplemented!("tests are not ready");
     }
 }
