@@ -23,7 +23,7 @@ fn main() {
     app.add_plugins(DefaultPlugins)
     .add_plugins(config.build_replicon());
 
-    match config.setup_client(app.world.resource::<RepliconChannels>()) {
+    match config.build_transport(app.world.resource::<RepliconChannels>()) {
         Ok((client, renet, netcode)) => {
             app.insert_resource(client)
             .insert_resource(renet)

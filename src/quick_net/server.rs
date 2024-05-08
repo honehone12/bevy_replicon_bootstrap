@@ -35,7 +35,7 @@ impl ServerConfig {
         (replicon, replicon_renet)
     }
 
-    pub fn setup_server(&self, net_channels: &RepliconChannels) 
+    pub fn build_transport(&self, net_channels: &RepliconChannels) 
     -> anyhow::Result<(Server, RenetServer, NetcodeServerTransport)> {
         let renet_server = RenetServer::new(ConnectionConfig{
             server_channels_config: net_channels.get_server_configs(),

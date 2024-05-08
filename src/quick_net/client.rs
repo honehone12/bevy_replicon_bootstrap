@@ -40,7 +40,7 @@ impl ClientConfig {
         (replicon, replicon_renet)
     }
 
-    pub fn setup_client(&self, net_channels: &RepliconChannels)
+    pub fn build_transport(&self, net_channels: &RepliconChannels)
     -> anyhow::Result<(Client, RenetClient, NetcodeClientTransport)> {
         let renet_client = RenetClient::new(ConnectionConfig{
             server_channels_config: net_channels.get_server_configs(),
