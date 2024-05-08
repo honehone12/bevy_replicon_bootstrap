@@ -1,13 +1,12 @@
 use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
-use crate::core::interpolation::Interpolatable;
-
+use crate::core::interpolation::LinearInterpolatable;
 
 #[derive(Component, Serialize, Deserialize, Default, Clone)]
 pub struct NetworkTranslation2D(pub Vec2);
 
-impl Interpolatable for NetworkTranslation2D {
-    fn interpolate(&self, rhs: &Self, s: f32) -> Self {
+impl LinearInterpolatable for NetworkTranslation2D {
+    fn linear_interpolate(&self, rhs: &Self, s: f32) -> Self {
         Self(self.0.lerp(rhs.0, s))
     }
 }
@@ -27,8 +26,8 @@ impl NetworkTranslation2D {
 #[derive(Component, Serialize, Deserialize, Default, Clone)]
 pub struct NetworkYaw(pub f32);
 
-impl Interpolatable for NetworkYaw {
-    fn interpolate(&self, rhs: &Self, t: f32) -> Self {
+impl LinearInterpolatable for NetworkYaw {
+    fn linear_interpolate(&self, rhs: &Self, t: f32) -> Self {
         Self(self.0.lerp(rhs.0, t))
     }
 }
