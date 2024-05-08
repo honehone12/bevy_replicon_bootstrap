@@ -7,8 +7,8 @@ use crate::core::interpolation::Interpolatable;
 pub struct NetworkTranslation2D(pub Vec2);
 
 impl Interpolatable for NetworkTranslation2D {
-    fn interpolate(&self, other: &Self, t: f32) -> Self {
-        Self(self.0.lerp(other.0, t))
+    fn interpolate(&self, rhs: &Self, s: f32) -> Self {
+        Self(self.0.lerp(rhs.0, s))
     }
 }
 
@@ -28,8 +28,8 @@ impl NetworkTranslation2D {
 pub struct NetworkYaw(pub f32);
 
 impl Interpolatable for NetworkYaw {
-    fn interpolate(&self, other: &Self, t: f32) -> Self {
-        Self(self.0.lerp(other.0, t))
+    fn interpolate(&self, rhs: &Self, t: f32) -> Self {
+        Self(self.0.lerp(rhs.0, t))
     }
 }
 
