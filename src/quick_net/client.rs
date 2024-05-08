@@ -10,7 +10,16 @@ use bevy_replicon_renet::{
 };
 
 #[derive(Resource)]
-pub struct ClientConfig {
+pub struct Client(u64);
+
+impl Client {
+    #[inline]
+    pub fn id(&self) -> u64 {
+        self.0
+    }
+}
+
+pub struct ClientBuilder {
     pub client_addr: IpAddr,
     pub server_addr: IpAddr,
     pub server_port: u16,
@@ -22,17 +31,7 @@ pub struct ClientConfig {
     pub token_expire_seconds: u64,
 }
 
-#[derive(Resource)]
-pub struct Client(u64);
-
-impl Client {
-    #[inline]
-    pub fn id(&self) -> u64 {
-        self.0
-    }
-}
-
-impl ClientConfig {
+impl ClientBuilder {
     pub fn build_replicon(&self)
     -> (PluginGroupBuilder, PluginGroupBuilder) {
         let replicon = RepliconPlugins.build().disable::<ServerPlugin>();

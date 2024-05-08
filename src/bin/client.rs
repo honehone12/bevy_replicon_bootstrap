@@ -2,10 +2,15 @@ use std::net::{IpAddr, Ipv4Addr};
 
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_replicon_action::{quick_net::client::*, dev::config::*};
+use bevy_replicon_action::{
+    prelude::*,
+    dev::client::*,
+    dev::config::*
+};
 
 fn main() {
-    let config = ClientConfig{
+    let mut app = App::new();
+    let builder = ClientBuilder{
         client_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
         server_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
         server_port: DEV_SERVER_LISTEN_PORT,
@@ -19,11 +24,11 @@ fn main() {
         token_expire_seconds: DEV_TOKEN_EXPIRE_SEC,
     };
     
-    let mut app = App::new();
     app.add_plugins(DefaultPlugins)
-    .add_plugins(config.build_replicon());
+    .add_plugins(GameClientPlugin)
+    .add_plugins(builder.build_replicon());
 
-    match config.build_transport(app.world.resource::<RepliconChannels>()) {
+    match builder.build_transport(app.world.resource::<RepliconChannels>()) {
         Ok((client, renet, netcode)) => {
             app.insert_resource(client)
             .insert_resource(renet)

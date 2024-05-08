@@ -13,8 +13,7 @@ use bevy_replicon_renet::renet::transport::ServerConfig as RenetServerConfig;
 #[derive(Resource)]
 pub struct Server;
 
-#[derive(Resource)]
-pub struct ServerConfig {
+pub struct ServerBuilder {
     pub network_tick_rate: u16,
     pub listen_addr: IpAddr,
     pub listen_port: u16,
@@ -23,7 +22,7 @@ pub struct ServerConfig {
     pub max_clients: usize
 }
 
-impl ServerConfig {
+impl ServerBuilder {
     pub fn build_replicon(&self) -> (PluginGroupBuilder, PluginGroupBuilder) {
         let replicon = RepliconPlugins.build().disable::<ClientPlugin>().set(
             ServerPlugin{

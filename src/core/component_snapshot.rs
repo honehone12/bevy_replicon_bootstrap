@@ -68,9 +68,9 @@ impl<C: Component> ComponentSnapshots<C> {
             self.deq.pop_front();
         }
 
-        let unix_t = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-        let now = unix_t.as_secs_f64();
-        self.deq.push_back(ComponentSnapshot::new(component, now, tick));
+        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+        let timestamp = now.as_secs_f64();
+        self.deq.push_back(ComponentSnapshot::new(component, timestamp, tick));
         Ok(())
     }
 
