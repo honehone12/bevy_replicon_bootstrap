@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
+use serde::{Serialize, Deserialize};
 
-#[derive(Component)]
+#[derive(Component, Serialize, Deserialize)]
 pub struct NetworkEntity(ClientId);
 
 impl NetworkEntity {

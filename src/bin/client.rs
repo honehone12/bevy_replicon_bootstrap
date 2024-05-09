@@ -25,8 +25,8 @@ fn main() {
     };
     
     app.add_plugins(DefaultPlugins)
-    .add_plugins(GameClientPlugin)
-    .add_plugins(builder.build_replicon());
+    .add_plugins(builder.build_replicon())
+    .add_plugins(GameClientPlugin);
 
     match builder.build_transport(app.world.resource::<RepliconChannels>()) {
         Ok((client, renet, netcode)) => {

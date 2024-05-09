@@ -179,7 +179,7 @@ where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
 }
 
 pub trait NetworkEventSnapshotAppExt {
-    fn use_client_event_snapshots<E>(
+    fn use_client_event_snapshot<E>(
         &mut self,
         channel: impl Into<RepliconChannel>
     ) -> &mut Self
@@ -187,7 +187,7 @@ pub trait NetworkEventSnapshotAppExt {
 }
 
 impl NetworkEventSnapshotAppExt for App{
-    fn use_client_event_snapshots<E>(
+    fn use_client_event_snapshot<E>(
         &mut self,
         channel: impl Into<RepliconChannel>
     ) -> &mut Self

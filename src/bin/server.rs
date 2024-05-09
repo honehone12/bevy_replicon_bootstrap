@@ -24,8 +24,8 @@ fn main() {
         )),
         LogPlugin::default()
     ))
-    .add_plugins(GameServerPlugin)
-    .add_plugins(builder.build_replicon());
+    .add_plugins(builder.build_replicon())
+    .add_plugins(GameServerPlugin);
 
     match builder.build_transport(app.world.resource::<RepliconChannels>()) {
         Ok((server, renet, netcode)) => {

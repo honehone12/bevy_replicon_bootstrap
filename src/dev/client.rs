@@ -1,11 +1,14 @@
 use std::time::SystemTime;
 use bevy::prelude::*;
-use bevy_replicon::client::ServerEntityTicks;
+use bevy_replicon::{
+    prelude::*,
+    client::ServerEntityTicks
+};
 use crate::{
     prelude::*,
     dev::{
         *, level::*, event::*, 
-        config::DEV_MAX_BUFFER_SIZE
+        config::DEV_MAX_SNAPSHOT_SIZE
     }
 };
 
@@ -35,6 +38,14 @@ impl Plugin for GameClientPlugin {
         .insert_resource(MouseInputActionMap{
             fire: MouseButton::Left
         })
+        .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
+        .use_component_snapshot::<NetworkTranslation2D>()
+        .use_component_snapshot::<NetworkYaw>()
+        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
+        .replicate::<NetworkEntity>()
+        .replicate::<NetworkTranslation2D>()
+        .replicate::<NetworkYaw>()
+        .replicate::<PlayerPresentation>()
         .add_event::<Action>()
         .add_systems(Startup, (
             setup_floor,
@@ -152,12 +163,22 @@ fn handle_player_spawned(
         let tick = server_ticks.get(&e)
         .expect("server tick should be mapped").get();
         
-        let mut translation_snaps = ComponentSnapshots::with_capacity(DEV_MAX_BUFFER_SIZE);
-        translation_snaps.insert(*net_t2d, tick)
-        .expect("check system time of the computer");
-        let mut yaw_snaps = ComponentSnapshots::with_capacity(DEV_MAX_BUFFER_SIZE); 
-        yaw_snaps.insert(*net_yaw, tick)
-        .expect("check system time of the computer");
+        let mut translation_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+        match translation_snaps.insert(*net_t2d, tick) {
+            Ok(()) => (),
+            Err(e) => {
+                error(e.into());
+                return;
+            }
+        }
+        let mut yaw_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE); 
+        match yaw_snaps.insert(*net_yaw, tick) {
+            Ok(()) => (),
+            Err(e) => {
+                error(e.into());
+                return;
+            }
+        }
         
         commands.entity(e)
         .insert((

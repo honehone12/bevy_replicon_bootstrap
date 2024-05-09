@@ -12,7 +12,10 @@ pub const DEV_SERVER_MAX_CLIENTS: usize = 10;
 pub const DEV_CLIENT_TIME_OUT_SEC: i32 = 15;
 pub const DEV_TOKEN_EXPIRE_SEC: u64 = 300;
 
-pub const DEV_MAX_BUFFER_SIZE: usize = 100;
+pub const DEV_MAX_SNAPSHOT_SIZE: usize = 100;
+
+pub const BASE_SPEED: f32 = 10.0;
+pub const PREDICTION_ERROR_THREASHOLD: f32 = 1.0;
 
 pub fn get_dev_protocol_id() -> u64 {
     if cfg!(debug_assertions) {

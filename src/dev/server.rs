@@ -5,14 +5,24 @@ use bevy_replicon_renet::renet::ClientId as RenetClientId;
 use anyhow::anyhow;
 use crate::{
     prelude::*,
-    dev::{*, config::DEV_MAX_BUFFER_SIZE}
+    dev::{*, config::DEV_MAX_SNAPSHOT_SIZE}
 };
+
+use self::event::{NetworkFire, NetworkMovement2D};
 
 pub struct GameServerPlugin;
 
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerEntityMap::default())
+        .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
+        .use_component_snapshot::<NetworkTranslation2D>()
+        .use_component_snapshot::<NetworkYaw>()
+        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
+        .replicate::<NetworkEntity>()
+        .replicate::<NetworkTranslation2D>()
+        .replicate::<NetworkYaw>()
+        .replicate::<PlayerPresentation>()
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event
@@ -49,14 +59,35 @@ fn handle_server_event(
                 };
 
                 let tick = replicon_tick.get();
+                let translation_bundle = match NetworkTranslation2DWithSnapshots::new(
+                    default(), 
+                    tick, 
+                    DEV_MAX_SNAPSHOT_SIZE
+                ) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        error(e.into());
+                        return;
+                    }
+                };
+                let yaw_bundle = match NetworkYawWithSnapshots::new(
+                    default(), 
+                    tick, 
+                    DEV_MAX_SNAPSHOT_SIZE
+                ) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        error(e.into());
+                        return;
+                    }
+                };
+
                 let entity = commands.spawn((
                     NetworkEntity::new(client_id),
+                    Replication,
                     PlayerPresentation::random(),
-                    NetworkTranslation2DWithSnapshots::new(
-                        default(), 
-                        tick, 
-                        DEV_MAX_BUFFER_SIZE
-                    ).expect("check system time of the computer")
+                    translation_bundle,
+                    yaw_bundle
                 ))
                 .id();
 
