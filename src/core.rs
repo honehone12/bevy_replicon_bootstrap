@@ -3,4 +3,4 @@ pub mod network_event;
 pub mod interpolation;
 pub mod component_snapshot;
 pub mod event_snapshot;
-pub mod owner;
+pub mod network_entity;

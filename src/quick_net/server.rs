@@ -62,6 +62,7 @@ impl ServerBuilder {
             socket
         )?;
 
+        info!("server built at: {listen_addr}");
         Ok((Server, renet_server, netcode_transport))
     }
 }

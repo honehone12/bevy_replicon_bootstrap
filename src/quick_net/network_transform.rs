@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
-use crate::core::interpolation::LinearInterpolatable;
+use crate::core::{component_snapshot::ComponentSnapshots, interpolation::LinearInterpolatable};
 
-#[derive(Component, Serialize, Deserialize, Default, Clone)]
+#[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct NetworkTranslation2D(pub Vec2);
 
 impl LinearInterpolatable for NetworkTranslation2D {
@@ -23,7 +23,7 @@ impl NetworkTranslation2D {
     }
 }
 
-#[derive(Component, Serialize, Deserialize, Default, Clone)]
+#[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct NetworkTranslation3D(pub Vec3);
 
 impl LinearInterpolatable for NetworkTranslation3D {
@@ -39,7 +39,7 @@ impl NetworkTranslation3D {
     }
 }
 
-#[derive(Component, Serialize, Deserialize, Default, Clone)]
+#[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct NetworkYaw(pub f32);
 
 impl LinearInterpolatable for NetworkYaw {
@@ -57,5 +57,77 @@ impl NetworkYaw {
     #[inline]
     pub fn to_quat(&self) -> Quat {
         Quat::from_rotation_y(self.0.to_radians())
+    }
+}
+
+#[derive(Bundle)]
+pub struct NetworkTranslation2DWithSnapshots {
+    translation: NetworkTranslation2D,
+    snaps: ComponentSnapshots<NetworkTranslation2D>
+}
+
+impl NetworkTranslation2DWithSnapshots {
+    #[inline]
+    pub fn new(
+        init: Vec3, 
+        tick: u32,
+        max_size: usize
+    ) -> anyhow::Result<Self> {
+        let mut snaps = ComponentSnapshots::with_capacity(max_size);
+        let translation = NetworkTranslation2D::from_3d(init);
+        snaps.insert(translation, tick)?;
+        
+        Ok(Self{ 
+            translation, 
+            snaps 
+        })
+    }
+}
+
+#[derive(Bundle)]
+pub struct NetworkTranslation3DWithSnapshots {
+    translation: NetworkTranslation3D,
+    snaps: ComponentSnapshots<NetworkTranslation3D>
+}
+
+impl NetworkTranslation3DWithSnapshots {
+    #[inline]
+    pub fn new(
+        init: Vec3, 
+        tick: u32,
+        max_size: usize
+    ) -> anyhow::Result<Self> {
+        let mut snaps = ComponentSnapshots::with_capacity(max_size);
+        let translation = NetworkTranslation3D::new(init);
+        snaps.insert(translation, tick)?;
+        
+        Ok(Self{ 
+            translation, 
+            snaps 
+        })
+    }
+}
+
+#[derive(Bundle)]
+pub struct NetworkYawWithSnapshots {
+    yaw: NetworkYaw,
+    snaps: ComponentSnapshots<NetworkYaw>
+}
+
+impl NetworkYawWithSnapshots {
+    #[inline]
+    pub fn new(
+        init: Quat, 
+        tick: u32,
+        max_size: usize
+    ) -> anyhow::Result<Self> {
+        let mut snaps = ComponentSnapshots::with_capacity(max_size);
+        let yaw = NetworkYaw::from_quat(init);
+        snaps.insert(yaw, tick)?;
+        
+        Ok(Self{ 
+            yaw, 
+            snaps 
+        })
     }
 }

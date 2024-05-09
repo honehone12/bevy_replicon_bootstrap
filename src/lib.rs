@@ -10,7 +10,7 @@ pub mod prelude {
             interpolation::*,
             network_event::*,
             player_entity_map::*,
-            owner::*
+            network_entity::*
         },
         quick_net::{
             client::*,

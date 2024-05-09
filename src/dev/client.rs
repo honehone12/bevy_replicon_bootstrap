@@ -1,51 +1,13 @@
 use std::time::SystemTime;
 use bevy::prelude::*;
-use serde::{Serialize, Deserialize};
-use rand::prelude::*;
+use bevy_replicon::client::ServerEntityTicks;
 use crate::{
     prelude::*,
-    dev::{level::*, event::*, *}
+    dev::{
+        *, level::*, event::*, 
+        config::DEV_MAX_BUFFER_SIZE
+    }
 };
-
-pub struct GameClientPlugin;
-
-impl Plugin for GameClientPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, handle_transport_error)
-        .add_systems(Startup, (
-            setup_floor,
-            setup_light,
-            setup_fixed_camera
-        ))
-        .add_systems(Update, (
-           handle_input, handle_action 
-        ).chain());
-    }
-}
-
-#[derive(Resource)]
-pub struct PlayerMovementParams {
-    pub base_speed: f32,
-    pub prediction_error_threashold: f32
-}
-
-#[derive(Component, Serialize, Deserialize)]
-pub struct PlayerPresentation {
-    pub color: Color
-}
-
-impl PlayerPresentation {
-    #[inline]
-    pub fn random() -> Self {
-        Self{
-            color: Color::rgb(
-                random(), 
-                random(), 
-                random()
-            )
-        }
-    }
-}
 
 #[derive(Resource)]
 pub struct KeyboardInputActionMap {
@@ -58,6 +20,34 @@ pub struct KeyboardInputActionMap {
 #[derive(Resource)]
 pub struct MouseInputActionMap {
     pub fire: MouseButton
+}
+
+pub struct GameClientPlugin;
+
+impl Plugin for GameClientPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(KeyboardInputActionMap{
+            movement_up: KeyCode::KeyW,
+            movement_left: KeyCode::KeyA,
+            movement_down: KeyCode::KeyS,
+            movement_right: KeyCode::KeyD,
+        })
+        .insert_resource(MouseInputActionMap{
+            fire: MouseButton::Left
+        })
+        .add_event::<Action>()
+        .add_systems(Startup, (
+            setup_floor,
+            setup_light,
+            setup_fixed_camera
+        ))
+        .add_systems(Update, (
+            handle_transport_error,
+            handle_player_spawned,
+            handle_input, 
+            handle_action 
+        ).chain());
+    }
 }
 
 #[derive(Event, Default)]
@@ -140,4 +130,55 @@ fn handle_action(
             }
         }
     }
+}
+
+fn handle_player_spawned(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    query: Query<(
+        Entity,
+        &NetworkEntity, 
+        &PlayerPresentation, 
+        &NetworkTranslation2D, 
+        &NetworkYaw
+    ), 
+        Added<NetworkEntity>
+    >,
+    client: Res<Client>,
+    server_ticks: Res<ServerEntityTicks>
+) {
+    for (e, net_e, presentation, net_t2d, net_yaw) in query.iter() {
+        let tick = server_ticks.get(&e)
+        .expect("server tick should be mapped").get();
+        
+        let mut translation_snaps = ComponentSnapshots::with_capacity(DEV_MAX_BUFFER_SIZE);
+        translation_snaps.insert(*net_t2d, tick)
+        .expect("check system time of the computer");
+        let mut yaw_snaps = ComponentSnapshots::with_capacity(DEV_MAX_BUFFER_SIZE); 
+        yaw_snaps.insert(*net_yaw, tick)
+        .expect("check system time of the computer");
+        
+        commands.entity(e)
+        .insert((
+            PbrBundle{
+                mesh: meshes.add(Mesh::from(Capsule3d::default())),
+                material: materials.add(presentation.color),
+                transform: Transform{
+                    translation: net_t2d.to_3d(),
+                    rotation: net_yaw.to_quat(),
+                    scale: Vec3::ONE
+                },
+                ..default()
+            },
+            translation_snaps,
+            yaw_snaps,
+        ));
+
+        if net_e.client_id().get() == client.id() {
+            commands.entity(e).insert(Owning);
+        }
+
+        info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
+    } 
 }

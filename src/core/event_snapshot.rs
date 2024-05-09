@@ -1,7 +1,13 @@
 use std::collections::{VecDeque, vec_deque::Iter};
 use bevy::prelude::*;
+use bevy_replicon::{
+    prelude::*, 
+    core::replicon_tick::RepliconTick,
+    client::ServerEntityTicks
+};
 use anyhow::bail;
-use super::network_event::NetworkEvent;
+use serde::{Serialize, de::DeserializeOwned};
+use super::{network_entity::NetworkEntity, network_event::NetworkEvent};
 
 pub struct EventSnapshot<E: NetworkEvent> {
     event: E,
@@ -123,5 +129,81 @@ impl<E: NetworkEvent> EventSnapshots<E> {
         } else {
             self.deq.range(0..0)
         }
+    }
+}
+
+fn server_populate_client_event_snapshots<E>(
+    mut events: EventReader<FromClient<E>>,
+    mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>,
+    replicon_tick: Res<RepliconTick>
+) 
+where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
+    let tick = replicon_tick.get();
+    for FromClient { client_id, event } in events.read() {
+        for (net_e, mut snaps) in query.iter_mut() {
+            if net_e.client_id() != *client_id {
+                continue;
+            }
+
+            match snaps.insert(event.clone(), tick) {
+                Ok(()) => debug!(
+                    "inserted event snapshot at tick: {} len: {}", 
+                    tick, snaps.len()
+                ),
+                Err(e) => warn!("discarding: {e}")
+            }
+        }
+    }
+}
+
+fn client_populate_client_event_snapshots<E>(
+    mut query: Query<(Entity, &mut EventSnapshots<E>)>,
+    mut events: EventReader<E>,
+    server_ticks: Res<ServerEntityTicks>
+)
+where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
+    for event in events.read() {
+        for (e, mut snaps) in query.iter_mut() {
+            let tick = server_ticks.get(&e)
+            .expect("server tick should be mapped").get();
+            
+            match snaps.insert(event.clone(), tick) {
+                Ok(()) => debug!(
+                    "inserted event snapshot at tick: {} len: {}", 
+                    tick, snaps.len()
+                ),
+                Err(e) => warn!("discarding: {e}")
+            }
+        }
+    }
+}
+
+pub trait NetworkEventSnapshotAppExt {
+    fn use_client_event_snapshots<E>(
+        &mut self,
+        channel: impl Into<RepliconChannel>
+    ) -> &mut Self
+    where E: NetworkEvent + Serialize + DeserializeOwned + Clone;
+}
+
+impl NetworkEventSnapshotAppExt for App{
+    fn use_client_event_snapshots<E>(
+        &mut self,
+        channel: impl Into<RepliconChannel>
+    ) -> &mut Self
+    where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
+        if self.world.contains_resource::<RepliconServer>() {
+            self.add_systems(PreUpdate, 
+                server_populate_client_event_snapshots::<E>
+                .after(ServerSet::Receive)    
+            );
+        } else if self.world.contains_resource::<RepliconClient>() {
+            self.add_systems(PostUpdate, 
+                client_populate_client_event_snapshots::<E>
+            );
+        } else {
+            panic!("could not find replicon server nor client");
+        }
+        self.add_client_event::<E>(channel)
     }
 }

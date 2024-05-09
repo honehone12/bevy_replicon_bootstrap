@@ -1,6 +1,11 @@
 use std::{collections::{VecDeque, vec_deque::Iter}, time::SystemTime};
 use bevy::prelude::*;
-use serde::{Serialize, Deserialize};
+use bevy_replicon::{
+    prelude::*,
+    client::ServerEntityTicks,
+    core::replicon_tick::RepliconTick
+};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use anyhow::bail;
 
 #[derive(Deserialize, Serialize)]
@@ -97,5 +102,68 @@ impl<C: Component> ComponentSnapshots<C> {
     #[inline]
     pub fn iter(&self) -> Iter<'_, ComponentSnapshot<C>> {
         self.deq.iter()
+    }
+}
+
+fn server_populate_component_snapshots<C: Component + Clone>(
+    mut query: Query<
+        (&C, &mut ComponentSnapshots<C>), 
+        Changed<C>
+    >,
+    replicon_tick: Res<RepliconTick>
+) { 
+    let tick = replicon_tick.get();
+    for (c, mut snaps) in query.iter_mut() {
+        match snaps.insert(c.clone(), tick) {
+            Ok(()) => debug!(
+                "inserted to component snapshot at tick: {} len: {}", 
+                tick, snaps.len()
+            ),
+            Err(e) => warn!("discarding: {e}") 
+        }
+    }
+}
+
+fn client_populate_component_snapshots<C: Component + Clone>(
+    mut query: Query<
+        (Entity , &C, &mut ComponentSnapshots<C>), 
+        Changed<C>
+    >,
+    server_tick: Res<ServerEntityTicks>,
+) {
+    for (e, c, mut snaps) in query.iter_mut() {
+        let tick = server_tick.get(&e)
+        .expect("server tick sholed be mapped").get();
+        
+        match snaps.insert(c.clone(), tick) {
+            Ok(()) => debug!(
+                "inserted to component buffer at tick: {} now len: {}",
+                tick, snaps.len()
+            ),
+            Err(e) => warn!("discarding: {e}")
+        }
+    }
+}
+
+pub trait ComponentSnapshotAppExt {
+    fn use_component_snapshots<C>(&mut self) -> &mut Self
+    where C: Component + Serialize + DeserializeOwned + Clone;
+}
+
+impl ComponentSnapshotAppExt for App {
+    fn use_component_snapshots<C>(&mut self) -> &mut Self
+    where C: Component + Serialize + DeserializeOwned + Clone {
+        if self.world.contains_resource::<RepliconServer>() {
+            self.add_systems(PostUpdate,
+                server_populate_component_snapshots::<C>
+            )
+        } else if self.world.contains_resource::<RepliconClient>() {
+            self.add_systems(PreUpdate, 
+                client_populate_component_snapshots::<C>
+                .after(ClientSet::Receive)
+            )
+        } else {
+            panic!("could not found replicon server nor client");
+        }
     }
 }
