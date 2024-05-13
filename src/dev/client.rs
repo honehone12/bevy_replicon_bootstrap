@@ -1,12 +1,15 @@
-use std::time::SystemTime;
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    utils::SystemTime
+};
 use bevy_replicon::{
     prelude::*,
     client::ServerEntityTicks
 };
 use crate::{
     dev::{
-        config::DEV_MAX_SNAPSHOT_SIZE, event::*, level::*, *
+        config::{DEV_MAX_SNAPSHOT_SIZE, DEV_NETWORK_TICK_DELTA64},
+        event::*, level::*, *
     }, prelude::*, RepliconActionPlugin
 };
 
@@ -117,14 +120,14 @@ fn handle_action(
 ) {
     if let Ok(_) = query.get_single() {
         for (a, event_id) in actions.read_with_id() {
-            let now = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-                Ok(d) => d,
+            let timestamp = match SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH) {
+                Ok(d) => d.as_secs_f64(),
                 Err(e) => {
                     error(e.into());
                     return;
                 }
             };
-            let timestamp = now.as_secs_f64();
 
             if a.has_movement() {
                 movements.send(NetworkMovement2D{
@@ -247,9 +250,20 @@ fn apply_network_transform_system(
         &NetworkTranslation2D,
         &ComponentSnapshots<NetworkTranslation2D>
     ), Without<Owning>>,
-    fixed_time: Res<Time<Fixed>> 
 ) {
     for (mut transform, net_translation, translation_snaps) in query.iter_mut() {
-        transform.translation = net_translation.to_3d();
+        let translation = match linear_interpolate(
+            net_translation, 
+            translation_snaps, 
+            DEV_NETWORK_TICK_DELTA64
+        ) {
+            Ok(t) => t,
+            Err(e) => {
+                error(e);
+                return;
+            }
+        };
+        
+        transform.translation = translation.to_3d();
     }
 }

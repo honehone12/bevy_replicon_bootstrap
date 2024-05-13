@@ -1,10 +1,10 @@
-use std::time::SystemTime;
-use bevy::utils::Uuid;
+use bevy::utils::{Uuid, SystemTime};
 
 pub const DEV_SERVER_TICK_RATE: f32 = 20.0;
 pub const DEV_SERVER_TICK_DELTA: f32 = 1.0 / DEV_SERVER_TICK_RATE;
 pub const DEV_NETWORK_TICK_RATE: u16 = 10;
 pub const DEV_NETWORK_TICK_DELTA: f32 = 1.0 / (DEV_NETWORK_TICK_RATE as f32); 
+pub const DEV_NETWORK_TICK_DELTA64: f64 = 1.0 / (DEV_NETWORK_TICK_RATE as f64); 
 
 pub const DEV_SERVER_LISTEN_PORT: u16 = 5000;
 pub const DEV_SERVER_MAX_CLIENTS: usize = 10;

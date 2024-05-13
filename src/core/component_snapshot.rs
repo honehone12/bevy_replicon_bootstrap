@@ -1,5 +1,8 @@
-use std::{collections::{VecDeque, vec_deque::Iter}, time::SystemTime};
-use bevy::prelude::*;
+use std::collections::{VecDeque, vec_deque::Iter};
+use bevy::{
+    prelude::*,
+    utils::SystemTime
+};
 use bevy_replicon::{
     prelude::*,
     client::ServerEntityTicks,
@@ -73,8 +76,9 @@ impl<C: Component> ComponentSnapshots<C> {
             self.deq.pop_front();
         }
 
-        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
-        let timestamp = now.as_secs_f64();
+        let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs_f64();
         self.deq.push_back(ComponentSnapshot::new(component, timestamp, tick));
         Ok(())
     }
@@ -146,12 +150,14 @@ fn client_populate_component_snapshots<C: Component + Clone>(
 }
 
 pub trait ComponentSnapshotAppExt {
-    fn use_replicated_component_snapshot<C>(&mut self) -> &mut Self
+    fn use_replicated_component_snapshot<C>(&mut self) 
+    -> &mut Self
     where C: Component + Serialize + DeserializeOwned + Clone;
 }
 
 impl ComponentSnapshotAppExt for App {
-    fn use_replicated_component_snapshot<C>(&mut self) -> &mut Self
+    fn use_replicated_component_snapshot<C>(&mut self) 
+    -> &mut Self
     where C: Component + Serialize + DeserializeOwned + Clone {
         if self.world.contains_resource::<RepliconServer>() {
             self.add_systems(PostUpdate,
