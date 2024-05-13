@@ -32,7 +32,6 @@ where C: Component + LinearInterpolatable + Clone {
     // elapsed = ?%
     // into 0.0 ~ 1.0
     let per = (elapsed / network_tick_delta).clamp(0.0, 1.0) as f32;
-    //info!("interpolating... t: {per}");
     let second = iter.next().unwrap();
 
     let interpolated = second
