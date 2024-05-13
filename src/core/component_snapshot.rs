@@ -146,24 +146,25 @@ fn client_populate_component_snapshots<C: Component + Clone>(
 }
 
 pub trait ComponentSnapshotAppExt {
-    fn use_component_snapshot<C>(&mut self) -> &mut Self
+    fn use_replicated_component_snapshot<C>(&mut self) -> &mut Self
     where C: Component + Serialize + DeserializeOwned + Clone;
 }
 
 impl ComponentSnapshotAppExt for App {
-    fn use_component_snapshot<C>(&mut self) -> &mut Self
+    fn use_replicated_component_snapshot<C>(&mut self) -> &mut Self
     where C: Component + Serialize + DeserializeOwned + Clone {
         if self.world.contains_resource::<RepliconServer>() {
             self.add_systems(PostUpdate,
                 server_populate_component_snapshots::<C>
-            )
+            );
         } else if self.world.contains_resource::<RepliconClient>() {
             self.add_systems(PreUpdate, 
                 client_populate_component_snapshots::<C>
                 .after(ClientSet::Receive)
-            )
+            );
         } else {
             panic!("could not found replicon server nor client");
         }
+        self.replicate::<C>()
     }
 }

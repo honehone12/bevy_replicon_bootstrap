@@ -20,6 +20,18 @@ pub mod prelude {
     };
 }
 
+use core::network_entity::NetworkEntity;
+use bevy::prelude::*;
+use bevy_replicon::prelude::*;
+
+pub struct RepliconActionPlugin;
+
+impl Plugin for RepliconActionPlugin {
+    fn build(&self, app: &mut App) {
+        app.replicate::<NetworkEntity>();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

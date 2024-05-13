@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
-use crate::core::{component_snapshot::ComponentSnapshots, interpolation::LinearInterpolatable};
+use crate::core::{
+    component_snapshot::ComponentSnapshots, 
+    interpolation::LinearInterpolatable
+};
 
 #[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct NetworkTranslation2D(pub Vec2);

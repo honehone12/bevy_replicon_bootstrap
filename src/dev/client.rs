@@ -5,11 +5,9 @@ use bevy_replicon::{
     client::ServerEntityTicks
 };
 use crate::{
-    prelude::*,
     dev::{
-        *, level::*, event::*, 
-        config::DEV_MAX_SNAPSHOT_SIZE
-    }
+        config::DEV_MAX_SNAPSHOT_SIZE, event::*, level::*, *
+    }, prelude::*, RepliconActionPlugin
 };
 
 #[derive(Resource)]
@@ -29,7 +27,8 @@ pub struct GameClientPlugin;
 
 impl Plugin for GameClientPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(KeyboardInputActionMap{
+        app.add_plugins(GameCommonPlugin)
+        .insert_resource(KeyboardInputActionMap{
             movement_up: KeyCode::KeyW,
             movement_left: KeyCode::KeyA,
             movement_down: KeyCode::KeyS,
@@ -38,15 +37,12 @@ impl Plugin for GameClientPlugin {
         .insert_resource(MouseInputActionMap{
             fire: MouseButton::Left
         })
-        .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
-        .use_component_snapshot::<NetworkTranslation2D>()
-        .use_component_snapshot::<NetworkYaw>()
-        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
-        .replicate::<NetworkEntity>()
-        .replicate::<NetworkTranslation2D>()
-        .replicate::<NetworkYaw>()
-        .replicate::<PlayerPresentation>()
         .add_event::<Action>()
+        .add_plugins(RepliconActionPlugin)
+        .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
+        .use_replicated_component_snapshot::<NetworkTranslation2D>()
+        .use_replicated_component_snapshot::<NetworkYaw>()
+        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .add_systems(Startup, (
             setup_floor,
             setup_light,
@@ -57,7 +53,10 @@ impl Plugin for GameClientPlugin {
             handle_player_spawned,
             handle_input, 
             handle_action 
-        ).chain());
+        ).chain())
+        .add_systems(FixedUpdate, 
+            move_2d_system
+        );
     }
 }
 
@@ -180,6 +179,9 @@ fn handle_player_spawned(
             }
         }
         
+        let movement_snaps = EventSnapshots::<NetworkMovement2D>
+        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+
         commands.entity(e)
         .insert((
             PbrBundle{
@@ -194,6 +196,7 @@ fn handle_player_spawned(
             },
             translation_snaps,
             yaw_snaps,
+            movement_snaps
         ));
 
         if net_e.client_id().get() == client.id() {
@@ -202,4 +205,37 @@ fn handle_player_spawned(
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
     } 
+}
+
+fn move_2d_system(
+    mut query: Query<(
+        &mut Transform,
+        &NetworkTranslation2D,
+        &mut EventSnapshots<NetworkMovement2D>
+    ), With<Owning>>,
+    params: Res<PlayerMovementParams>,
+    fixed_time: Res<Time<Fixed>>
+) {
+    for (mut transform, net_translation, mut movements) in query.iter_mut() {
+        let frontier = movements.frontier();
+        if frontier.len() == 0 {
+            continue;
+        }
+
+        let mut client_translation = NetworkTranslation2D::from_3d(transform.translation);
+        let mut server_translation = net_translation.clone();
+        for movement in frontier {
+            let event = movement.event();
+            move_2d(&mut client_translation, event, &params, &fixed_time);
+            move_2d(&mut server_translation, event, &params, &fixed_time);
+        }
+
+        let prediction_error = server_translation.0.distance(client_translation.0);
+        if prediction_error > params.prediction_error_threashold {
+            transform.translation = server_translation.to_3d();
+            warn!("prediction error: {prediction_error}. overwritten.")
+        } else {
+            transform.translation = client_translation.to_3d();
+        }
+    }
 }
