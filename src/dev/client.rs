@@ -44,9 +44,9 @@ impl Plugin for GameClientPlugin {
         .use_replicated_component_snapshot::<NetworkYaw>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .add_systems(Startup, (
-            setup_floor,
             setup_light,
-            setup_fixed_camera
+            setup_fixed_camera,
+            setup_floor
         ))
         .add_systems(Update, (
             handle_transport_error,
@@ -54,9 +54,10 @@ impl Plugin for GameClientPlugin {
             handle_input, 
             handle_action 
         ).chain())
-        .add_systems(FixedUpdate, 
-            move_2d_system
-        );
+        .add_systems(FixedUpdate, ( 
+            move_2d_system,
+            apply_network_transform_system
+        ).chain());
     }
 }
 
@@ -237,5 +238,18 @@ fn move_2d_system(
         } else {
             transform.translation = client_translation.to_3d();
         }
+    }
+}
+
+fn apply_network_transform_system(
+    mut query: Query<(
+        &mut Transform,
+        &NetworkTranslation2D,
+        &ComponentSnapshots<NetworkTranslation2D>
+    ), Without<Owning>>,
+    fixed_time: Res<Time<Fixed>> 
+) {
+    for (mut transform, net_translation, translation_snaps) in query.iter_mut() {
+        transform.translation = net_translation.to_3d();
     }
 }
