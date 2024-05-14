@@ -226,7 +226,11 @@ fn move_2d_system(
             continue;
         }
 
+        // https://github.com/honehone12/bevy_replicon_action/issues/4
+
+        // current visible translation on client
         let mut client_translation = NetworkTranslation2D::from_3d(transform.translation);
+        // latest replicated server translation
         let mut server_translation = net_translation.clone();
         for movement in frontier {
             let event = movement.event();
