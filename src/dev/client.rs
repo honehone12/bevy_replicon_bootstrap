@@ -238,7 +238,7 @@ fn move_2d_system(
             move_2d(&mut server_translation, event, &params, &fixed_time);
         }
 
-        let prediction_error = server_translation.0.distance(client_translation.0);
+        let prediction_error = server_translation.0.distance_squared(client_translation.0);
         if prediction_error > params.prediction_error_threashold {
             transform.translation = server_translation.to_3d();
             warn!("prediction error: {prediction_error}. overwritten.")
