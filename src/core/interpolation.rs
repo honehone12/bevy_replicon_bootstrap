@@ -27,10 +27,16 @@ where C: Component + LinearInterpolatable + Clone {
     .duration_since(SystemTime::UNIX_EPOCH)?
     .as_secs_f64();
     let elapsed = now - latest.timestamp();
-
+    
     // network tick delta time = 100%
     // elapsed = ?%
     // into 0.0 ~ 1.0
+
+    // become 1.0
+    if elapsed >= network_tick_delta {
+        return Ok(latest.component().clone());
+    }
+    
     let per = (elapsed / network_tick_delta).clamp(0.0, 1.0) as f32;
     let second = iter.next().unwrap();
 

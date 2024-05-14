@@ -143,13 +143,47 @@ fn move_2d_system(
 }
 
 fn handle_fire(
-    query: Query<&ComponentSnapshots<NetworkTranslation2D>>,
+    query: Query<(
+        &NetworkEntity,
+        &ComponentSnapshots<NetworkTranslation2D>
+    )>,
     mut events: EventReader<FromClient<NetworkFire>>
 ) {
     for FromClient { client_id, event } in events.read() {
         info!(
             "player: {:?} fired at {}",
-            client_id, event.timestamp 
+            client_id, event.timestamp() 
         );
+
+        for (net_e, snaps) in query.iter() {
+            let is_shooter = net_e.client_id() == *client_id;
+
+            let index = match snaps.iter().rposition(
+                |s| s.timestamp() <= event.timestamp()
+            ) {
+                Some(idx) => idx,
+                None => {
+                    if cfg!(debug_assertions) {
+                        panic!(
+                            "could not find timestamp smaller than {}, insert one on initialization",
+                            event.timestamp()
+                        );
+                    } else {
+                        warn!(
+                            "could not find timestamp smaller than {}, skipping",
+                            event.timestamp()
+                        );
+                        continue;
+                    }
+                }
+            };
+
+            // get by found index
+            let snap = snaps.get(index).unwrap();
+            info!(
+                "found latest snap: shooter: {}, index: {}, timestamp: {}, translation: {}",
+                is_shooter, index, snap.timestamp(), snap.component().0
+            );
+        }
     }
 }
