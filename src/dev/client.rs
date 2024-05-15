@@ -113,12 +113,12 @@ fn handle_input(
 } 
 
 fn handle_action(
-    query: Query<&Owning>,
+    query: Query<&NetworkTranslation2D, With<Owning>>,
     mut actions: EventReader<Action>,
     mut movements: EventWriter<NetworkMovement2D>,
     mut fires: EventWriter<NetworkFire>
 ) {
-    if let Ok(_) = query.get_single() {
+    if let Ok(net_translation) = query.get_single() {
         for (a, event_id) in actions.read_with_id() {
             let timestamp = match SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH) {
@@ -131,6 +131,7 @@ fn handle_action(
 
             if a.has_movement() {
                 movements.send(NetworkMovement2D{
+                    current_translation: net_translation.0,
                     axis: a.movement_vec,
                     index: event_id.id,
                     timestamp
@@ -226,8 +227,6 @@ fn move_2d_system(
             continue;
         }
 
-        // https://github.com/honehone12/bevy_replicon_action/issues/4
-
         // current visible translation on client
         let mut client_translation = NetworkTranslation2D::from_3d(transform.translation);
         // latest replicated server translation
@@ -239,9 +238,9 @@ fn move_2d_system(
         }
 
         let prediction_error = server_translation.0.distance_squared(client_translation.0);
-        if prediction_error > params.prediction_error_threashold {
+        if prediction_error > params.translation_error_threashold {
             transform.translation = server_translation.to_3d();
-            warn!("prediction error: {prediction_error}. overwritten.")
+            warn!("prediction error: {prediction_error}. overwritten.");
         } else {
             transform.translation = client_translation.to_3d();
         }

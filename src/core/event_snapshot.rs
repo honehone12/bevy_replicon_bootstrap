@@ -121,8 +121,9 @@ impl<E: NetworkEvent> EventSnapshots<E> {
 
     #[inline]
     pub fn frontier(&mut self) -> Iter<'_, EventSnapshot<E>> {
-        if let Some(begin) = self.deq.iter()
-        .position(|e| e.index() >= self.frontier_index) {
+        if let Some(begin) = self.deq.iter().position(
+            |e| e.index() >= self.frontier_index
+        ) {
             // buffer is not empty here
             self.frontier_index = self.deq.back().unwrap().index() + 1;
             self.deq.range(begin..)

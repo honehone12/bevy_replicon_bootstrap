@@ -9,7 +9,7 @@ use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::transport::NetcodeTransportError;
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
-use config::{BASE_SPEED, PREDICTION_ERROR_THREASHOLD};
+use config::{BASE_SPEED, TRANSLATION_ERROR_THREASHOLD};
 
 use crate::prelude::*;
 use event::NetworkMovement2D;
@@ -20,7 +20,7 @@ impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerMovementParams{
             base_speed: BASE_SPEED,
-            prediction_error_threashold: PREDICTION_ERROR_THREASHOLD
+            translation_error_threashold: TRANSLATION_ERROR_THREASHOLD
         })
         .replicate::<PlayerPresentation>();
     }
@@ -29,7 +29,7 @@ impl Plugin for GameCommonPlugin {
 #[derive(Resource)]
 pub struct PlayerMovementParams {
     pub base_speed: f32,
-    pub prediction_error_threashold: f32
+    pub translation_error_threashold: f32
 }
 
 #[derive(Component, Serialize, Deserialize)]

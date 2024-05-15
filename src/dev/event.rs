@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Event, Serialize, Deserialize, Clone)]
 pub struct NetworkMovement2D {
+    pub current_translation: Vec2,
     pub axis: Vec2,
     pub index: usize,
     pub timestamp: f64

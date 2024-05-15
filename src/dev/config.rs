@@ -12,10 +12,14 @@ pub const DEV_SERVER_MAX_CLIENTS: usize = 10;
 pub const DEV_CLIENT_TIME_OUT_SEC: i32 = 15;
 pub const DEV_TOKEN_EXPIRE_SEC: u64 = 300;
 
-pub const DEV_MAX_SNAPSHOT_SIZE: usize = 100;
+pub const DEV_MAX_SNAPSHOT_SIZE: usize = 200;
 
 pub const BASE_SPEED: f32 = 10.0;
-pub const PREDICTION_ERROR_THREASHOLD: f32 = 1.0;
+
+// (network delata time / local delta time * base speed * local delta time)^2
+// bevy's fixed update = 64hz
+// DEV_NETWORK_TICK_DELTA / 0.0156 * BASE_SPEED * 0.0156 = 0.9999
+pub const TRANSLATION_ERROR_THREASHOLD: f32 = 1.0;
 
 pub fn get_dev_protocol_id() -> u64 {
     if cfg!(debug_assertions) {
