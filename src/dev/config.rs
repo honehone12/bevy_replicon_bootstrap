@@ -44,8 +44,10 @@ pub fn get_dev_private_key() -> [u8; 32] {
 
 pub fn get_dev_client_id() -> u64 {
     if cfg!(debug_assertions) {
-        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-        now.as_millis() as u64
+        SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
     } else {
         panic!("do not use dev client id");
     }

@@ -4,7 +4,8 @@ use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::ClientId as RenetClientId;
 use anyhow::anyhow;
 use crate::{
-    dev::{config::DEV_MAX_SNAPSHOT_SIZE, *}, prelude::*, RepliconActionPlugin
+    dev::{config::DEV_MAX_SNAPSHOT_SIZE, *}, 
+    prelude::*, 
 };
 
 use self::event::{NetworkFire, NetworkMovement2D};

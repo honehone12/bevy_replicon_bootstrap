@@ -9,9 +9,8 @@ use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::transport::NetcodeTransportError;
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
-use config::{BASE_SPEED, TRANSLATION_ERROR_THREASHOLD};
-
 use crate::prelude::*;
+use config::{BASE_SPEED, TRANSLATION_ERROR_THREASHOLD};
 use event::NetworkMovement2D;
 
 pub struct GameCommonPlugin;
