@@ -124,12 +124,18 @@ fn move_2d_system(
     mut query: Query<(
         &mut NetworkTranslation2D,
         &ComponentSnapshots<NetworkTranslation2D>,
+        &mut PredioctionError<NetworkTranslation2D>,
         &mut EventSnapshots<NetworkMovement2D>
     )>,
     fixed_time: Res<Time<Fixed>>,
     params: Res<PlayerMovementParams>
 ) {
-    for (mut net_translation, snaps, mut movements) in query.iter_mut() {  
+    for (
+        mut net_translation, 
+        snaps, 
+        mut prediction_error, 
+        mut movements
+    ) in query.iter_mut() {  
         movements.sort_with_index();
         let mut frontier = movements.frontier();
         if frontier.len() == 0 {
@@ -149,22 +155,15 @@ fn move_2d_system(
             }
         };
         // get by found index
-        let server_snap = snaps.get(index).unwrap();
-        let server_translation = server_snap.component();
+        let server_translation = snaps.get(index).unwrap().component();
         let client_translation = first.current_translation;
 
-        info!(
-            "server timestamp: {}, translation: {} | client timestamp: {} translation: {}", 
-            server_snap.timestamp(), 
-            server_translation.0, 
-            first.timestamp(),
-            client_translation
-        );
-        
         let error = server_translation.0.distance_squared(client_translation);
         info!("translation error: {error}");
         if error > params.translation_error_threashold {
-            warn!("translation error is going further than threashold");
+            warn!("translation error is over threashold");
+            prediction_error.error_count += 1;
+            warn!("prediction error count: {}", prediction_error.error_count);
         }
         
         move_2d(&mut translation, first, &params, &fixed_time);

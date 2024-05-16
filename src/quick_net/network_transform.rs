@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
-use crate::core::{
+use crate::{core::{
     component_snapshot::ComponentSnapshots, 
     interpolation::LinearInterpolatable
-};
+}, prelude::PredioctionError};
 
 #[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct NetworkTranslation2D(pub Vec2);
@@ -23,22 +23,6 @@ impl NetworkTranslation2D {
     #[inline]
     pub fn to_3d(&self) -> Vec3 {
         Vec3::new(self.0.x, 0.0, self.0.y)
-    }
-}
-
-#[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
-pub struct NetworkTranslation3D(pub Vec3);
-
-impl LinearInterpolatable for NetworkTranslation3D {
-    fn linear_interpolate(&self, rhs: &Self, s: f32) -> Self {
-        Self(self.0.lerp(rhs.0, s))
-    }
-}
-
-impl NetworkTranslation3D {
-    #[inline]
-    pub fn new(vec3: Vec3) -> Self {
-        Self(vec3)
     }
 }
 
@@ -65,8 +49,9 @@ impl NetworkYaw {
 
 #[derive(Bundle)]
 pub struct NetworkTranslation2DWithSnapshots {
-    translation: NetworkTranslation2D,
-    snaps: ComponentSnapshots<NetworkTranslation2D>
+    pub translation: NetworkTranslation2D,
+    pub snaps: ComponentSnapshots<NetworkTranslation2D>,
+    pub prediction_error: PredioctionError<NetworkTranslation2D>
 }
 
 impl NetworkTranslation2DWithSnapshots {
@@ -82,39 +67,16 @@ impl NetworkTranslation2DWithSnapshots {
         
         Ok(Self{ 
             translation, 
-            snaps 
-        })
-    }
-}
-
-#[derive(Bundle)]
-pub struct NetworkTranslation3DWithSnapshots {
-    translation: NetworkTranslation3D,
-    snaps: ComponentSnapshots<NetworkTranslation3D>
-}
-
-impl NetworkTranslation3DWithSnapshots {
-    #[inline]
-    pub fn new(
-        init: Vec3, 
-        tick: u32,
-        max_size: usize
-    ) -> anyhow::Result<Self> {
-        let mut snaps = ComponentSnapshots::with_capacity(max_size);
-        let translation = NetworkTranslation3D::new(init);
-        snaps.insert(translation, tick)?;
-        
-        Ok(Self{ 
-            translation, 
-            snaps 
+            snaps ,
+            prediction_error: default()
         })
     }
 }
 
 #[derive(Bundle)]
 pub struct NetworkYawWithSnapshots {
-    yaw: NetworkYaw,
-    snaps: ComponentSnapshots<NetworkYaw>
+    pub yaw: NetworkYaw,
+    pub snaps: ComponentSnapshots<NetworkYaw>,
 }
 
 impl NetworkYawWithSnapshots {

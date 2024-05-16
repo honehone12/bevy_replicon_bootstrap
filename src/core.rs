@@ -4,3 +4,4 @@ pub mod interpolation;
 pub mod component_snapshot;
 pub mod event_snapshot;
 pub mod network_entity;
+pub mod prediction;

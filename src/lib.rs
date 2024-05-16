@@ -22,7 +22,8 @@ pub mod prelude {
             interpolation::*,
             network_event::*,
             player_entity_map::*,
-            network_entity::*
+            network_entity::*,
+            prediction::*
         },
         quick_net::{
             client::*,

@@ -216,35 +216,22 @@ fn handle_player_spawned(
 fn move_2d_system(
     mut query: Query<(
         &mut Transform,
-        &NetworkTranslation2D,
         &mut EventSnapshots<NetworkMovement2D>
     ), With<Owning>>,
     params: Res<PlayerMovementParams>,
     fixed_time: Res<Time<Fixed>>
 ) {
-    for (mut transform, net_translation, mut movements) in query.iter_mut() {
+    for (mut transform, mut movements) in query.iter_mut() {
         let frontier = movements.frontier();
         if frontier.len() == 0 {
             continue;
         }
 
-        // current visible translation on client
-        let mut client_translation = NetworkTranslation2D::from_3d(transform.translation);
-        // latest replicated server translation
-        let mut server_translation = net_translation.clone();
+        let mut translation = NetworkTranslation2D::from_3d(transform.translation);        
         for movement in frontier {
-            let event = movement.event();
-            move_2d(&mut client_translation, event, &params, &fixed_time);
-            move_2d(&mut server_translation, event, &params, &fixed_time);
+            move_2d(&mut translation, movement.event(), &params, &fixed_time);
         }
-
-        let prediction_error = server_translation.0.distance_squared(client_translation.0);
-        if prediction_error > params.translation_error_threashold {
-            transform.translation = server_translation.to_3d();
-            warn!("prediction error: {prediction_error}. overwritten.");
-        } else {
-            transform.translation = client_translation.to_3d();
-        }
+        transform.translation = translation.to_3d();
     }
 }
 
