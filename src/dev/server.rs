@@ -21,14 +21,15 @@ impl Plugin for GameServerPlugin {
         .use_replicated_component_snapshot::<NetworkTranslation2D>()
         .use_replicated_component_snapshot::<NetworkYaw>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
+        .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
+        .add_systems(FixedUpdate, 
+            move_2d_system
+        )
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
             handle_fire
-        ).chain())
-        .add_systems(FixedUpdate, 
-            move_2d_system
-        );
+        ).chain());
     }
 }
 
@@ -122,18 +123,19 @@ fn handle_server_event(
 
 fn move_2d_system(
     mut query: Query<(
+        &NetworkEntity,
         &mut NetworkTranslation2D,
         &ComponentSnapshots<NetworkTranslation2D>,
         &mut PredioctionError<NetworkTranslation2D>,
         &mut EventSnapshots<NetworkMovement2D>
     )>,
     fixed_time: Res<Time<Fixed>>,
-    params: Res<PlayerMovementParams>
+    params: Res<PlayerMovementParams>,
+    mut force_replication: EventWriter<ToClients<ForceReplicate<NetworkTranslation2D>>>
 ) {
     for (
-        mut net_translation, 
-        snaps, 
-        mut prediction_error, 
+        net_e,
+        mut net_translation, snaps, mut prediction_error, 
         mut movements
     ) in query.iter_mut() {  
         movements.sort_with_index();
@@ -161,9 +163,27 @@ fn move_2d_system(
         let error = server_translation.0.distance_squared(client_translation);
         info!("translation error: {error}");
         if error > params.translation_error_threashold {
-            warn!("translation error is over threashold");
             prediction_error.error_count += 1;
-            warn!("prediction error count: {}", prediction_error.error_count);
+            
+            warn!(
+                "translation error is over threashold, now prediction error count: {}", 
+                prediction_error.error_count
+            );
+
+            if prediction_error.error_count > params.prediction_error_count_threashold {
+                warn!(
+                    "prediction error count is over threashold"
+                );
+
+                force_replication.send(ToClients { 
+                    mode: SendMode::Direct(net_e.client_id()), 
+                    event: default()
+                });
+
+                prediction_error.error_count = 0;
+            }
+        } else {
+            prediction_error.error_count = 0;
         }
         
         move_2d(&mut translation, first, &params, &fixed_time);

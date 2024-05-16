@@ -20,7 +20,8 @@ pub const BASE_SPEED: f32 = 10.0;
 // bevy's fixed update = 64hz
 // DEV_NETWORK_TICK_DELTA / 0.0156 * BASE_SPEED * 0.0156 = 0.9999
 pub const TRANSLATION_ERROR_THREASHOLD: f32 = 1.0;
-pub const PREDICTION_ERROR_COUNT_THREASHOLD: u32 = 3;
+// 1sec / network tick
+pub const PREDICTION_ERROR_COUNT_THREASHOLD: u32 = 10;
 
 pub fn get_dev_protocol_id() -> u64 {
     if cfg!(debug_assertions) {

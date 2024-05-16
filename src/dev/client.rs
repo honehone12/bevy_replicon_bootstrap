@@ -47,20 +47,25 @@ impl Plugin for GameClientPlugin {
         .use_replicated_component_snapshot::<NetworkTranslation2D>()
         .use_replicated_component_snapshot::<NetworkYaw>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
+        .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
         .add_systems(Startup, (
             setup_light,
             setup_fixed_camera,
             setup_floor
         ))
+        .add_systems(PreUpdate, 
+            handle_force_replication
+            .after(ClientSet::Receive)
+        )
+        .add_systems(FixedUpdate, ( 
+            move_2d_system,
+            apply_network_transform_system
+        ).chain())
         .add_systems(Update, (
             handle_transport_error,
             handle_player_spawned,
             handle_input, 
             handle_action 
-        ).chain())
-        .add_systems(FixedUpdate, ( 
-            move_2d_system,
-            apply_network_transform_system
         ).chain());
     }
 }
@@ -114,12 +119,12 @@ fn handle_input(
 } 
 
 fn handle_action(
-    query: Query<&NetworkTranslation2D, With<Owning>>,
+    query: Query<&Transform, With<Owning>>,
     mut actions: EventReader<Action>,
     mut movements: EventWriter<NetworkMovement2D>,
     mut fires: EventWriter<NetworkFire>
 ) {
-    if let Ok(net_translation) = query.get_single() {
+    if let Ok(transform) = query.get_single() {
         for (a, event_id) in actions.read_with_id() {
             let timestamp = match SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH) {
@@ -132,7 +137,10 @@ fn handle_action(
 
             if a.has_movement() {
                 movements.send(NetworkMovement2D{
-                    current_translation: net_translation.0,
+                    current_translation: Vec2::new(
+                        transform.translation.x,
+                        transform.translation.z
+                    ),
                     axis: a.movement_vec,
                     index: event_id.id,
                     timestamp
@@ -213,6 +221,27 @@ fn handle_player_spawned(
     } 
 }
 
+fn handle_force_replication(
+    mut query: Query<(
+        &mut Transform,
+        &NetworkTranslation2D 
+    ),
+        With<Owning>
+    >,
+    mut force_replication: EventReader<ForceReplicate<NetworkTranslation2D>>
+) {
+    for _ in force_replication.read() {
+        if let Ok((mut transform, net_translation)) = query.get_single_mut() {
+            warn!(
+                "force replication: before: {}, after: {}",
+                transform.translation,
+                net_translation.0
+            );
+            transform.translation = net_translation.to_3d();
+        }
+    }
+}
+
 fn move_2d_system(
     mut query: Query<(
         &mut Transform,
@@ -221,10 +250,10 @@ fn move_2d_system(
     params: Res<PlayerMovementParams>,
     fixed_time: Res<Time<Fixed>>
 ) {
-    for (mut transform, mut movements) in query.iter_mut() {
+    if let Ok((mut transform, mut movements)) = query.get_single_mut() {
         let frontier = movements.frontier();
         if frontier.len() == 0 {
-            continue;
+            return;
         }
 
         let mut translation = NetworkTranslation2D::from_3d(transform.translation);        
