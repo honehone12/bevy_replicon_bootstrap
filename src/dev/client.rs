@@ -42,12 +42,7 @@ impl Plugin for GameClientPlugin {
             fire: MouseButton::Left
         })
         .add_event::<Action>()
-        .add_plugins(RepliconActionPlugin)
-        .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
-        .use_replicated_component_snapshot::<NetworkTranslation2D>()
-        .use_replicated_component_snapshot::<NetworkYaw>()
-        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
-        .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
+        .add_client_event::<NetworkMovement2D>(ChannelKind::Unreliable)
         .add_systems(Startup, (
             setup_light,
             setup_fixed_camera,
@@ -192,9 +187,6 @@ fn handle_player_spawned(
                 return;
             }
         }
-        
-        let movement_snaps = EventSnapshots::<NetworkMovement2D>
-        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
 
         commands.entity(e)
         .insert((
@@ -209,8 +201,7 @@ fn handle_player_spawned(
                 ..default()
             },
             translation_snaps,
-            yaw_snaps,
-            movement_snaps
+            yaw_snaps
         ));
 
         if net_e.client_id().get() == client.id() {
@@ -243,24 +234,17 @@ fn handle_force_replication(
 }
 
 fn move_2d_system(
-    mut query: Query<(
-        &mut Transform,
-        &mut EventSnapshots<NetworkMovement2D>
-    ), With<Owning>>,
+    mut query: Query<&mut Transform, With<Owning>>,
+    mut movements: EventReader<NetworkMovement2D>,
     params: Res<PlayerMovementParams>,
     fixed_time: Res<Time<Fixed>>
 ) {
-    if let Ok((mut transform, mut movements)) = query.get_single_mut() {
-        let frontier = movements.frontier();
-        if frontier.len() == 0 {
-            return;
-        }
-
-        let mut translation = NetworkTranslation2D::from_3d(transform.translation);        
-        for movement in frontier {
-            move_2d(&mut translation, movement.event(), &params, &fixed_time);
-        }
-        transform.translation = translation.to_3d();
+    for movement in movements.read() {
+        if let Ok(mut transform) = query.get_single_mut() {
+            let mut translation = NetworkTranslation2D::from_3d(transform.translation);        
+            move_2d(&mut translation, movement, &params, &fixed_time);    
+            transform.translation = translation.to_3d();
+        }       
     }
 }
 

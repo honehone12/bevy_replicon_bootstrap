@@ -11,7 +11,7 @@ use serde::{Serialize, Deserialize};
 use rand::prelude::*;
 use crate::prelude::*;
 use config::*;
-use event::NetworkMovement2D;
+use event::{NetworkMovement2D, NetworkFire};
 
 pub struct GameCommonPlugin;
 
@@ -22,6 +22,11 @@ impl Plugin for GameCommonPlugin {
             translation_error_threashold: TRANSLATION_ERROR_THREASHOLD,
             prediction_error_count_threashold: PREDICTION_ERROR_COUNT_THREASHOLD
         })
+        .add_plugins(RepliconActionPlugin)
+        .use_replicated_component_snapshot::<NetworkTranslation2D>()
+        .use_replicated_component_snapshot::<NetworkYaw>()
+        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
+        .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();
     }
 }

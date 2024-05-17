@@ -16,12 +16,7 @@ impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(GameCommonPlugin)
         .insert_resource(PlayerEntityMap::default())
-        .add_plugins(RepliconActionPlugin)
         .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
-        .use_replicated_component_snapshot::<NetworkTranslation2D>()
-        .use_replicated_component_snapshot::<NetworkYaw>()
-        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
-        .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
         .add_systems(FixedUpdate, 
             move_2d_system
         )
