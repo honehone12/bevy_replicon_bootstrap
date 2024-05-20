@@ -1,6 +1,5 @@
 pub mod config;
 pub mod level;
-pub mod event;
 pub mod client;
 pub mod server;
 
@@ -10,32 +9,23 @@ use bevy_replicon_renet::renet::transport::NetcodeTransportError;
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
 use crate::prelude::*;
-use config::*;
-use event::{NetworkMovement2D, NetworkFire};
+use config::{BASE_SPEED, DEV_NETWORK_TICK_DELTA64};
 
 pub struct GameCommonPlugin;
 
 impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PlayerMovementParams{
-            base_speed: BASE_SPEED,
-            translation_error_threashold: TRANSLATION_ERROR_THREASHOLD,
-            prediction_error_count_threashold: PREDICTION_ERROR_COUNT_THREASHOLD
+            base_speed: BASE_SPEED
         })
         .add_plugins(RepliconActionPlugin)
+        .use_network_transform_2d(move_2d, DEV_NETWORK_TICK_DELTA64)
         .use_replicated_component_snapshot::<NetworkTranslation2D>()
         .use_replicated_component_snapshot::<NetworkYaw>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();
     }
-}
-
-#[derive(Resource)]
-pub struct PlayerMovementParams {
-    pub base_speed: f32,
-    pub translation_error_threashold: f32,
-    pub prediction_error_count_threashold: u32
 }
 
 #[derive(Component, Serialize, Deserialize)]
@@ -53,6 +43,27 @@ impl PlayerPresentation {
                 random()
             )
         }
+    }
+}
+
+#[derive(Resource)]
+pub struct PlayerMovementParams {
+    pub base_speed: f32
+}
+
+#[derive(Event, Serialize, Deserialize, Clone)]
+pub struct NetworkFire {
+    pub index: usize,
+    pub timestamp: f64
+}
+
+impl NetworkEvent for NetworkFire {
+    fn index(&self) -> usize {
+        self.index
+    }
+
+    fn timestamp(&self) -> f64 {
+        self.timestamp
     }
 }
 

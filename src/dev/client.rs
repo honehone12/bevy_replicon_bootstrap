@@ -8,8 +8,9 @@ use bevy_replicon::{
 };
 use crate::{
     dev::{
-        config::{DEV_MAX_SNAPSHOT_SIZE, DEV_NETWORK_TICK_DELTA64},
-        event::*, level::*, *
+        config::DEV_MAX_SNAPSHOT_SIZE,
+        level::*, 
+        *
     }, 
     prelude::*,
 };
@@ -52,10 +53,6 @@ impl Plugin for GameClientPlugin {
             handle_force_replication
             .after(ClientSet::Receive)
         )
-        .add_systems(FixedUpdate, ( 
-            move_2d_system,
-            apply_network_transform_system
-        ).chain())
         .add_systems(Update, (
             handle_transport_error,
             handle_player_spawned,
@@ -230,44 +227,5 @@ fn handle_force_replication(
             );
             transform.translation = net_translation.to_3d();
         }
-    }
-}
-
-fn move_2d_system(
-    mut query: Query<&mut Transform, With<Owning>>,
-    mut movements: EventReader<NetworkMovement2D>,
-    params: Res<PlayerMovementParams>,
-    fixed_time: Res<Time<Fixed>>
-) {
-    for movement in movements.read() {
-        if let Ok(mut transform) = query.get_single_mut() {
-            let mut translation = NetworkTranslation2D::from_3d(transform.translation);        
-            move_2d(&mut translation, movement, &params, &fixed_time);    
-            transform.translation = translation.to_3d();
-        }       
-    }
-}
-
-fn apply_network_transform_system(
-    mut query: Query<(
-        &mut Transform,
-        &NetworkTranslation2D,
-        &ComponentSnapshots<NetworkTranslation2D>
-    ), Without<Owning>>,
-) {
-    for (mut transform, net_translation, translation_snaps) in query.iter_mut() {
-        let translation = match linear_interpolate(
-            net_translation, 
-            translation_snaps, 
-            DEV_NETWORK_TICK_DELTA64
-        ) {
-            Ok(t) => t,
-            Err(e) => {
-                error(e);
-                return;
-            }
-        };
-        
-        transform.translation = translation.to_3d();
     }
 }

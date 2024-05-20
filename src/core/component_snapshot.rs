@@ -169,7 +169,7 @@ impl ComponentSnapshotAppExt for App {
                 .after(ClientSet::Receive)
             );
         } else {
-            panic!("could not found replicon server nor client");
+            panic!("could not find replicon server nor client");
         }
         self.replicate::<C>()
     }

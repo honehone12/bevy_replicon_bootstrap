@@ -19,7 +19,7 @@ where C: Component + LinearInterpolatable + Clone {
         return Ok(current.clone());
     }
 
-    // deque is longer than 2
+    // deque is longer than or equal 2
     let mut iter = snaps.iter().rev();
     let latest = iter.next().unwrap();
     

@@ -5,8 +5,7 @@ use bevy_replicon_renet::renet::ClientId as RenetClientId;
 use anyhow::anyhow;
 use crate::{
     dev::{
-        config::DEV_MAX_SNAPSHOT_SIZE,
-        event::{NetworkFire, NetworkMovement2D}, 
+        config::*,
         *
     },
     prelude::*, 
@@ -16,12 +15,13 @@ pub struct GameServerPlugin;
 
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(GameCommonPlugin)
+        app.insert_resource(PredictionErrorThresholds{
+            translation_error_threshold: TRANSLATION_ERROR_THRESHOLD,
+            prediction_error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
+        })
+        .add_plugins(GameCommonPlugin)
         .insert_resource(PlayerEntityMap::default())
         .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
-        .add_systems(FixedUpdate, 
-            move_2d_system
-        )
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
@@ -116,91 +116,6 @@ fn handle_server_event(
             }
         }
     }
-}
-
-fn move_2d_system(
-    mut query: Query<(
-        &NetworkEntity,
-        &mut NetworkTranslation2D,
-        &ComponentSnapshots<NetworkTranslation2D>,
-        &mut PredioctionError<NetworkTranslation2D>,
-        &mut EventSnapshots<NetworkMovement2D>
-    )>,
-    fixed_time: Res<Time<Fixed>>,
-    params: Res<PlayerMovementParams>,
-    mut force_replication: EventWriter<ToClients<ForceReplicate<NetworkTranslation2D>>>
-) {
-    for (
-        net_e,
-        mut net_translation, snaps, mut prediction_error, 
-        mut movements
-    ) in query.iter_mut() {  
-        movements.sort_with_index();
-        let mut frontier = movements.frontier();
-        if frontier.len() == 0 {
-            continue;
-        }
-
-        // frontier is not empty
-        let first = frontier.next().unwrap().event();
-        let index = match snaps.iter().rposition(
-            |s| s.timestamp() <= first.timestamp()
-        ) {
-            Some(idx) => idx,
-            None => {
-                if cfg!(debug_assertions) {
-                    panic!(
-                        "could not find timestamp smaller than: {}, insert one at initialization", 
-                        first.timestamp()
-                    );
-                } else {
-                    warn!(
-                        "could not find timestamp smaller than: {}, this will cause fuge jump", 
-                        first.timestamp()
-                    );
-                    continue;
-                }
-            }
-        };
-
-        // get by found index
-        let server_translation = snaps.get(index).unwrap().component();
-        let client_translation = first.current_translation;
-
-        let error = server_translation.0.distance_squared(client_translation);
-        if error > params.translation_error_threashold {
-            prediction_error.error_count += 1;
-            
-            warn!(
-                "translation error is over threashold, now prediction error count: {}", 
-                prediction_error.error_count
-            );
-
-            if prediction_error.error_count > params.prediction_error_count_threashold {
-                warn!(
-                    "prediction error count is over threashold"
-                );
-
-                force_replication.send(ToClients { 
-                    mode: SendMode::Direct(net_e.client_id()), 
-                    event: default()
-                });
-
-                prediction_error.error_count = 0;
-            }
-        } else {
-            prediction_error.error_count = 0;
-        }
-        
-        let mut translation = net_translation.clone();
-        move_2d(&mut translation, first, &params, &fixed_time);
-
-        while let Some(snap) = frontier.next() {
-            move_2d(&mut translation, snap.event(), &params, &fixed_time)
-        }
-
-        net_translation.0 = translation.0;
-    } 
 }
 
 fn handle_fire(
