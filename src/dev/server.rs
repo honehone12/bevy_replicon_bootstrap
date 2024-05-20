@@ -4,11 +4,13 @@ use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::ClientId as RenetClientId;
 use anyhow::anyhow;
 use crate::{
-    dev::{config::DEV_MAX_SNAPSHOT_SIZE, *}, 
+    dev::{
+        config::DEV_MAX_SNAPSHOT_SIZE,
+        event::{NetworkFire, NetworkMovement2D}, 
+        *
+    },
     prelude::*, 
 };
-
-use self::event::{NetworkFire, NetworkMovement2D};
 
 pub struct GameServerPlugin;
 
@@ -139,24 +141,33 @@ fn move_2d_system(
             continue;
         }
 
-        let mut translation = net_translation.clone();
         // frontier is not empty
         let first = frontier.next().unwrap().event();
-
         let index = match snaps.iter().rposition(
             |s| s.timestamp() <= first.timestamp()
         ) {
             Some(idx) => idx,
             None => {
-                panic!("could not find timestamp smaller than: {}", first.timestamp());
+                if cfg!(debug_assertions) {
+                    panic!(
+                        "could not find timestamp smaller than: {}, insert one at initialization", 
+                        first.timestamp()
+                    );
+                } else {
+                    warn!(
+                        "could not find timestamp smaller than: {}, this will cause fuge jump", 
+                        first.timestamp()
+                    );
+                    continue;
+                }
             }
         };
+
         // get by found index
         let server_translation = snaps.get(index).unwrap().component();
         let client_translation = first.current_translation;
 
         let error = server_translation.0.distance_squared(client_translation);
-        info!("translation error: {error}");
         if error > params.translation_error_threashold {
             prediction_error.error_count += 1;
             
@@ -181,6 +192,7 @@ fn move_2d_system(
             prediction_error.error_count = 0;
         }
         
+        let mut translation = net_translation.clone();
         move_2d(&mut translation, first, &params, &fixed_time);
 
         while let Some(snap) = frontier.next() {
@@ -214,7 +226,7 @@ fn handle_fire(
                 None => {
                     if cfg!(debug_assertions) {
                         panic!(
-                            "could not find timestamp smaller than {}, insert one on initialization",
+                            "could not find timestamp smaller than {}, insert one at initialization",
                             event.timestamp()
                         );
                     } else {
