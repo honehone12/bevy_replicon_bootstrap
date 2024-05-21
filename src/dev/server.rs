@@ -8,7 +8,7 @@ use crate::{
         config::*,
         *
     },
-    prelude::*, 
+    prelude::*, quick_net::distance_culling::Distance, 
 };
 
 pub struct GameServerPlugin;
@@ -89,6 +89,7 @@ fn handle_server_event(
                     NetworkEntity::new(client_id),
                     Replication,
                     PlayerPresentation::random(),
+                    Importance::<Distance>::default(),
                     translation_bundle,
                     yaw_bundle,
                     movement_snaps

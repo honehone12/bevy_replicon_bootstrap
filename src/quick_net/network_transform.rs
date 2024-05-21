@@ -3,6 +3,8 @@ use bevy_replicon::prelude::*;
 use serde::{Serialize, Deserialize};
 use crate::prelude::*;
 
+use super::distance_culling::DistanceCalculatable;
+
 #[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct NetworkTranslation2D(pub Vec2);
 
@@ -10,6 +12,12 @@ impl LinearInterpolatable for NetworkTranslation2D {
     fn linear_interpolate(&self, rhs: &Self, s: f32) -> Self {
         Self(self.0.lerp(rhs.0, s))
     }
+}
+
+impl DistanceCalculatable for NetworkTranslation2D {
+    fn distance(&self, rhs: &Self) -> f32 {
+        self.0.distance_squared(rhs.0)
+    }   
 }
 
 impl NetworkTranslation2D {

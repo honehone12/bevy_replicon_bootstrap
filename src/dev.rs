@@ -8,7 +8,7 @@ use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::transport::NetcodeTransportError;
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
-use crate::prelude::*;
+use crate::{prelude::*, quick_net::distance_culling::DistanceCullingAppExt};
 use config::{BASE_SPEED, DEV_NETWORK_TICK_DELTA64};
 
 pub struct GameCommonPlugin;
@@ -22,6 +22,7 @@ impl Plugin for GameCommonPlugin {
         .use_network_transform_2d(move_2d, DEV_NETWORK_TICK_DELTA64)
         .use_replicated_component_snapshot::<NetworkTranslation2D>()
         .use_replicated_component_snapshot::<NetworkYaw>()
+        .use_distance_culling::<NetworkTranslation2D>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();
