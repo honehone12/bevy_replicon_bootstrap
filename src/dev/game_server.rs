@@ -15,7 +15,7 @@ pub struct GameServerPlugin;
 
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PredictionErrorThresholds{
+        app.insert_resource(PredictionErrorThresholdConfig{
             translation_error_threshold: TRANSLATION_ERROR_THRESHOLD,
             prediction_error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
         })

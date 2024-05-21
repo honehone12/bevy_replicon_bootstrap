@@ -130,7 +130,22 @@ pub type NetworkTranslationUpdateFn<P> = fn(
 
 #[derive(Resource)]
 pub struct NetworkTransformUpdateFns<P: Resource> {
-    pub translation_update_fn: NetworkTranslationUpdateFn<P>
+    translation_update_fn: NetworkTranslationUpdateFn<P>
+}
+
+impl<P: Resource> NetworkTransformUpdateFns<P> {
+    #[inline]
+    pub fn new(translation_update_fn: NetworkTranslationUpdateFn<P>)
+    -> Self {
+        Self { 
+            translation_update_fn 
+        }
+    }
+
+    #[inline]
+    pub fn translation_update_fn(&self) -> NetworkTranslationUpdateFn<P> {
+        self.translation_update_fn
+    }
 }
 
 #[derive(Resource)]
@@ -149,7 +164,7 @@ fn update_translation_2d_server_system<P: Resource>(
     params: Res<P>,
     update_fns: Res<NetworkTransformUpdateFns<P>>,
     fixed_time: Res<Time<Fixed>>,
-    thresholds: Res<PredictionErrorThresholds>,
+    thresholds: Res<PredictionErrorThresholdConfig>,
     mut force_replication: EventWriter<ToClients<ForceReplicate<NetworkTranslation2D>>>
 ) {
     for (
@@ -193,14 +208,15 @@ fn update_translation_2d_server_system<P: Resource>(
 
         let error = server_translation.0.distance_squared(client_translation);
         if error > thresholds.translation_error_threshold {
-            prediction_error.error_count += 1;
+            prediction_error.increment_count();
             
+            let error_count = prediction_error.get_count();
             warn!(
                 "translation error is over threashold, now prediction error count: {}", 
-                prediction_error.error_count
+                error_count
             );
 
-            if prediction_error.error_count > thresholds.prediction_error_count_threshold {
+            if error_count > thresholds.prediction_error_count_threshold {
                 warn!(
                     "prediction error count is over threashold"
                 );
@@ -210,14 +226,14 @@ fn update_translation_2d_server_system<P: Resource>(
                     event: default()
                 });
 
-                prediction_error.error_count = 0;
+                prediction_error.reset_count();
             }
         } else {
-            prediction_error.error_count = 0;
+            prediction_error.reset_count();
         }
         
         let mut translation = net_translation.clone();
-        (update_fns.translation_update_fn)(
+        (update_fns.translation_update_fn())(
             &mut translation, 
             first, 
             &params, 
@@ -225,7 +241,7 @@ fn update_translation_2d_server_system<P: Resource>(
         );
 
         while let Some(snap) = frontier.next() {
-            (update_fns.translation_update_fn)(
+            (update_fns.translation_update_fn())(
                 &mut translation, 
                 snap.event(), 
                 &params, 
@@ -303,16 +319,12 @@ impl NetworkTransformAppExt for App {
         network_tick_delta: f64
     ) -> &mut Self {
         if self.world.contains_resource::<RepliconServer>() {
-            self.insert_resource(NetworkTransformUpdateFns{
-                translation_update_fn
-            })
+            self.insert_resource(NetworkTransformUpdateFns::new(translation_update_fn))
             .add_systems(FixedUpdate, 
                 update_translation_2d_server_system::<P>
             )
         } else if self.world.contains_resource::<RepliconClient>() {
-            self.insert_resource(NetworkTransformUpdateFns{
-                translation_update_fn
-            })
+            self.insert_resource(NetworkTransformUpdateFns::new(translation_update_fn))
             .insert_resource(NetworkTransformInterpolationConfig{
                 network_tick_delta
             })

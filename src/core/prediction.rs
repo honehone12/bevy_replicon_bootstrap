@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Resource)]
-pub struct PredictionErrorThresholds {
+pub struct PredictionErrorThresholdConfig {
     pub translation_error_threshold: f32,
     pub prediction_error_count_threshold: u32
 }
@@ -12,9 +12,27 @@ pub struct PredictionErrorThresholds {
 #[derive(Component, Default)]
 pub struct PredioctionError<C>
 where C: Component + Serialize + DeserializeOwned {
-    pub error_count: u32,
+    error_count: u32,
     phantom: PhantomData<C>
 }
 
+impl<C: Component + Serialize + DeserializeOwned> PredioctionError<C> {
+    #[inline]
+    pub fn get_count(&self) -> u32 {
+        self.error_count
+    }
+
+    #[inline]
+    pub fn increment_count(&mut self) {
+        self.error_count += 1
+    }
+
+    #[inline]
+    pub fn reset_count(&mut self) {
+        self.error_count = 0;
+    }
+}
+
 #[derive(Event, Serialize, Deserialize, Default)]
-pub struct ForceReplicate<C: Component + Serialize + DeserializeOwned>(pub PhantomData<C>);
+pub struct ForceReplicate<C>(pub PhantomData<C>)
+where C: Component + Serialize + DeserializeOwned;
