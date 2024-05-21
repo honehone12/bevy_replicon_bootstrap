@@ -106,6 +106,14 @@ where C: Component + DistanceCalculatable {
     }
 }
 
+fn distance_culling_system(
+    distance_map: Res<DistanceMap>
+) {
+    if distance_map.is_changed() {
+
+    }
+}
+
 pub trait DistanceCullingAppExt {
     fn use_distance_culling<C>(&mut self) -> &mut Self
     where C: Component + DistanceCalculatable;
@@ -116,9 +124,10 @@ impl DistanceCullingAppExt for App {
     where C: Component + DistanceCalculatable {
         if self.world.contains_resource::<RepliconServer>() {
             self.insert_resource(DistanceMap::default())
-            .add_systems(PostUpdate, 
-                calculate_distance_system::<C>
-            )
+            .add_systems(PostUpdate, (
+                calculate_distance_system::<C>,
+                distance_culling_system
+            ).chain().before(ServerSet::Send))
         } else if self.world.contains_resource::<RepliconClient>() {
             self
         } else {

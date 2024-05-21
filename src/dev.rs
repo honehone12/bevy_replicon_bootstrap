@@ -8,7 +8,7 @@ use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::transport::NetcodeTransportError;
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
-use crate::{prelude::*, quick_net::distance_culling::DistanceCullingAppExt};
+use crate::{prelude::*, quick_lib::distance_culling::DistanceCullingAppExt};
 use config::{BASE_SPEED, DEV_NETWORK_TICK_DELTA64};
 
 pub struct GameCommonPlugin;

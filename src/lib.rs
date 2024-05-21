@@ -1,5 +1,5 @@
 pub mod dev;
-pub mod quick_net;
+pub mod quick_lib;
 pub mod core;
 
 use core::network_entity::NetworkEntity;
@@ -26,7 +26,7 @@ pub mod prelude {
             prediction::*,
             importance::*
         },
-        quick_net::{
+        quick_lib::{
             client::*,
             server::*,
             network_transform::*,

@@ -8,7 +8,7 @@ use crate::{
         config::*,
         *
     },
-    prelude::*, quick_net::distance_culling::Distance, 
+    prelude::*, quick_lib::distance_culling::Distance, 
 };
 
 pub struct GameServerPlugin;
