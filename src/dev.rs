@@ -1,7 +1,7 @@
 pub mod config;
 pub mod level;
-pub mod client;
-pub mod server;
+pub mod game_client;
+pub mod game_server;
 
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;

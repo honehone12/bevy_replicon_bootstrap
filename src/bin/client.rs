@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_action::{
     prelude::*,
-    dev::client::*,
+    dev::game_client::*,
     dev::config::*
 };
 

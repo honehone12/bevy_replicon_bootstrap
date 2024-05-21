@@ -2,7 +2,7 @@ use std::{net::{IpAddr, Ipv4Addr}, time::Duration};
 use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*};
 use bevy_replicon_action::{
     prelude::*,
-    dev::server::*, 
+    dev::game_server::*, 
     dev::config::*
 };
 use bevy_replicon::prelude::*;

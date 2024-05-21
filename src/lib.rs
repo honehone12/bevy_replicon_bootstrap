@@ -27,8 +27,8 @@ pub mod prelude {
             importance::*
         },
         quick_lib::{
-            client::*,
-            server::*,
+            client_builder::*,
+            server_builder::*,
             network_transform::*,
         },
         RepliconActionPlugin
