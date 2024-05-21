@@ -3,8 +3,6 @@ use bevy_replicon::prelude::*;
 use serde::{Serialize, Deserialize};
 use crate::prelude::*;
 
-use super::distance_culling::DistanceCalculatable;
-
 #[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct NetworkTranslation2D(pub Vec2);
 
@@ -307,27 +305,32 @@ fn apply_network_transform_client_system(
 pub trait NetworkTransformAppExt {
     fn use_network_transform_2d<P: Resource>(
         &mut self,
-        translation_update_fn :NetworkTranslationUpdateFn<P>,
-        network_tick_delta: f64
+        transform_update_fns: NetworkTransformUpdateFns<P>,
+        params: P,
+        interpolation_config: NetworkTransformInterpolationConfig,
+        prediction_config: PredictionErrorThresholdConfig
     ) -> &mut Self;
 }
 
 impl NetworkTransformAppExt for App {
     fn use_network_transform_2d<P: Resource>(
         &mut self,
-        translation_update_fn: NetworkTranslationUpdateFn<P>,
-        network_tick_delta: f64
+        transform_update_fns: NetworkTransformUpdateFns<P>,
+        params: P,
+        interpolation_config: NetworkTransformInterpolationConfig,
+        prediction_config: PredictionErrorThresholdConfig
     ) -> &mut Self {
         if self.world.contains_resource::<RepliconServer>() {
-            self.insert_resource(NetworkTransformUpdateFns::new(translation_update_fn))
+            self.insert_resource(transform_update_fns)
+            .insert_resource(params)
+            .insert_resource(prediction_config)
             .add_systems(FixedUpdate, 
                 update_translation_2d_server_system::<P>
             )
         } else if self.world.contains_resource::<RepliconClient>() {
-            self.insert_resource(NetworkTransformUpdateFns::new(translation_update_fn))
-            .insert_resource(NetworkTransformInterpolationConfig{
-                network_tick_delta
-            })
+            self.insert_resource(transform_update_fns)
+            .insert_resource(params)
+            .insert_resource(interpolation_config)
             .add_systems(FixedUpdate, (
                 update_translation_2d_client_system::<P>,
                 apply_network_transform_client_system

@@ -8,18 +8,14 @@ use crate::{
         config::*,
         *
     },
-    prelude::*, quick_lib::distance_culling::Distance, 
+    prelude::*
 };
 
 pub struct GameServerPlugin;
 
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PredictionErrorThresholdConfig{
-            translation_error_threshold: TRANSLATION_ERROR_THRESHOLD,
-            prediction_error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
-        })
-        .add_plugins(GameCommonPlugin)
+        app.add_plugins(GameCommonPlugin)
         .insert_resource(PlayerEntityMap::default())
         .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
         .add_systems(Update, (

@@ -30,6 +30,7 @@ pub mod prelude {
             client_builder::*,
             server_builder::*,
             network_transform::*,
+            distance_culling::*
         },
         RepliconActionPlugin
     };

@@ -8,18 +8,27 @@ use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::transport::NetcodeTransportError;
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
-use crate::{prelude::*, quick_lib::distance_culling::DistanceCullingAppExt};
-use config::{BASE_SPEED, DEV_NETWORK_TICK_DELTA64};
+use crate::prelude::*;
+use config::*;
 
 pub struct GameCommonPlugin;
 
 impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PlayerMovementParams{
-            base_speed: BASE_SPEED
-        })
-        .add_plugins(RepliconActionPlugin)
-        .use_network_transform_2d(move_2d, DEV_NETWORK_TICK_DELTA64)
+        app.add_plugins(RepliconActionPlugin)
+        .use_network_transform_2d(
+            NetworkTransformUpdateFns::new(move_2d),
+            PlayerMovementParams{
+                base_speed: BASE_SPEED
+            },
+            NetworkTransformInterpolationConfig{
+                network_tick_delta: DEV_NETWORK_TICK_DELTA64 
+            },
+            PredictionErrorThresholdConfig{
+                translation_error_threshold: TRANSLATION_ERROR_THRESHOLD,
+                prediction_error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
+            }
+        )
         .use_replicated_component_snapshot::<NetworkTranslation2D>()
         .use_replicated_component_snapshot::<NetworkYaw>()
         .use_distance_culling::<NetworkTranslation2D>()
