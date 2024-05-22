@@ -1,9 +1,9 @@
 use std::collections::{VecDeque, vec_deque::Iter};
 use bevy::prelude::*;
 use bevy_replicon::{
+    client::confirmed::Confirmed,
+    server::server_tick::ServerTick, 
     prelude::*, 
-    core::replicon_tick::RepliconTick,
-    client::ServerEntityTicks
 };
 use anyhow::bail;
 use serde::{Serialize, de::DeserializeOwned};
@@ -136,10 +136,10 @@ impl<E: NetworkEvent> EventSnapshots<E> {
 fn server_populate_client_event_snapshots<E>(
     mut events: EventReader<FromClient<E>>,
     mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>,
-    replicon_tick: Res<RepliconTick>
+    server_tick: Res<ServerTick>
 ) 
 where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
-    let tick = replicon_tick.get();
+    let tick = server_tick.get();
     for FromClient { client_id, event } in events.read() {
         for (net_e, mut snaps) in query.iter_mut() {
             if net_e.client_id() != *client_id {
@@ -158,16 +158,13 @@ where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
 }
 
 fn client_populate_client_event_snapshots<E>(
-    mut query: Query<(Entity, &mut EventSnapshots<E>)>,
+    mut query: Query<(&mut EventSnapshots<E>, &Confirmed)>,
     mut events: EventReader<E>,
-    server_ticks: Res<ServerEntityTicks>
 )
 where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
     for event in events.read() {
-        for (e, mut snaps) in query.iter_mut() {
-            let tick = server_ticks.get(&e)
-            .expect("server tick should be mapped").get();
-            
+        for (mut snaps, confirmed_tick) in query.iter_mut() {
+            let tick = confirmed_tick.last_tick().get();
             match snaps.insert(event.clone(), tick) {
                 Ok(()) => debug!(
                     "inserted event snapshot at tick: {} len: {}", 

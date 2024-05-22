@@ -3,8 +3,8 @@ use bevy::{
     utils::SystemTime
 };
 use bevy_replicon::{
-    prelude::*,
-    client::ServerEntityTicks
+    client::confirmed::Confirmed, 
+    prelude::*
 };
 use crate::{
     dev::{
@@ -157,17 +157,15 @@ fn handle_player_spawned(
         &NetworkEntity, 
         &PlayerPresentation, 
         &NetworkTranslation2D, 
-        &NetworkYaw
+        &NetworkYaw,
+        &Confirmed
     ), 
         Added<NetworkEntity>
     >,
     client: Res<Client>,
-    server_ticks: Res<ServerEntityTicks>
 ) {
-    for (e, net_e, presentation, net_t2d, net_yaw) in query.iter() {
-        let tick = server_ticks.get(&e)
-        .expect("server tick should be mapped").get();
-        
+    for (e, net_e, presentation, net_t2d, net_yaw, confirmed_tick) in query.iter() {
+        let tick = confirmed_tick.last_tick().get();
         let mut translation_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
         match translation_snaps.insert(*net_t2d, tick) {
             Ok(()) => (),

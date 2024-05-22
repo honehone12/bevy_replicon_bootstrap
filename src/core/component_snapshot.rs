@@ -4,9 +4,9 @@ use bevy::{
     utils::SystemTime
 };
 use bevy_replicon::{
-    prelude::*,
-    client::ServerEntityTicks,
-    core::replicon_tick::RepliconTick
+    client::confirmed::Confirmed,
+    server::server_tick::ServerTick, 
+    prelude::* 
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use anyhow::bail;
@@ -114,9 +114,9 @@ fn server_populate_component_snapshots<C: Component + Clone>(
         (&C, &mut ComponentSnapshots<C>), 
         Changed<C>
     >,
-    replicon_tick: Res<RepliconTick>
+    server_tick: Res<ServerTick>
 ) { 
-    let tick = replicon_tick.get();
+    let tick = server_tick.get();
     for (c, mut snaps) in query.iter_mut() {
         match snaps.insert(c.clone(), tick) {
             Ok(()) => debug!(
@@ -129,16 +129,16 @@ fn server_populate_component_snapshots<C: Component + Clone>(
 }
 
 fn client_populate_component_snapshots<C: Component + Clone>(
-    mut query: Query<
-        (Entity , &C, &mut ComponentSnapshots<C>), 
+    mut query: Query<( 
+        &C, 
+        &mut ComponentSnapshots<C>,
+        &Confirmed
+    ), 
         Changed<C>
     >,
-    server_tick: Res<ServerEntityTicks>,
 ) {
-    for (e, c, mut snaps) in query.iter_mut() {
-        let tick = server_tick.get(&e)
-        .expect("server tick sholed be mapped").get();
-        
+    for (c, mut snaps, confirmed_tick) in query.iter_mut() {
+        let tick = confirmed_tick.last_tick().get();
         match snaps.insert(c.clone(), tick) {
             Ok(()) => debug!(
                 "inserted to component buffer at tick: {} now len: {}",

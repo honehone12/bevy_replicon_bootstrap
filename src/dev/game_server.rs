@@ -1,5 +1,11 @@
-use bevy::{prelude::*, utils::Uuid};
-use bevy_replicon::{core::replicon_tick::RepliconTick, prelude::*};
+use bevy::{
+    prelude::*, 
+    utils::Uuid
+};
+use bevy_replicon::{
+    prelude::*, 
+    server::server_tick::ServerTick
+};
 use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::ClientId as RenetClientId;
 use anyhow::anyhow;
@@ -31,7 +37,7 @@ fn handle_server_event(
     mut events: EventReader<ServerEvent>,
     mut entity_map: ResMut<PlayerEntityMap>,
     netcode_server: Res<NetcodeServerTransport>,
-    replicon_tick: Res<RepliconTick>,
+    server_tick: Res<ServerTick>,
 ) {
     for e in events.read() {
         match e {
@@ -54,7 +60,7 @@ fn handle_server_event(
                     }
                 };
 
-                let tick = replicon_tick.get();
+                let tick = server_tick.get();
                 let translation_bundle = match NetworkTranslation2DWithSnapshots::new(
                     default(), 
                     tick, 
@@ -83,7 +89,7 @@ fn handle_server_event(
 
                 let entity = commands.spawn((
                     NetworkEntity::new(client_id),
-                    Replication,
+                    Replicated,
                     PlayerPresentation::random(),
                     PlayerView,
                     Importance::<Distance>::default(),

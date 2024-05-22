@@ -3,8 +3,8 @@ use bevy::{
     prelude::*
 };
 use bevy_replicon::{
-    core::replicon_tick::RepliconTick, 
-    prelude::*
+    prelude::*, 
+    server::server_tick::ServerTick
 };
 use crate::prelude::*;
 
@@ -81,11 +81,11 @@ fn calculate_distance_system<C>(
         With<PlayerView>
     >,
     mut distance_map: ResMut<DistanceMap>,
-    replicon_tick: Res<RepliconTick>
+    server_tick: Res<ServerTick>
 )
 where C: Component + DistanceCalculatable {
     for (e, c) in query.iter() {
-        let tick = replicon_tick.get();
+        let tick = server_tick.get();
 
         for (player_e, player_c) in player_views.iter() {
             if e == player_e {

@@ -38,8 +38,11 @@ pub struct ClientBuilder {
 impl ClientBuilder {
     pub fn build_replicon(&self)
     -> (PluginGroupBuilder, PluginGroupBuilder) {
-        let replicon = RepliconPlugins.build().disable::<ServerPlugin>();
-        let replicon_renet = RepliconRenetPlugins.build().disable::<RepliconRenetServerPlugin>();
+        let replicon = RepliconPlugins.build()
+        .disable::<ServerPlugin>();
+        let replicon_renet = RepliconRenetPlugins.build()
+        .disable::<RepliconRenetServerPlugin>();
+        
         (replicon, replicon_renet)
     }
 
