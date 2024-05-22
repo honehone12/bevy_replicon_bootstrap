@@ -31,7 +31,7 @@ fn handle_server_event(
     mut events: EventReader<ServerEvent>,
     mut entity_map: ResMut<PlayerEntityMap>,
     netcode_server: Res<NetcodeServerTransport>,
-    replicon_tick: Res<RepliconTick> 
+    replicon_tick: Res<RepliconTick>,
 ) {
     for e in events.read() {
         match e {
@@ -85,6 +85,7 @@ fn handle_server_event(
                     NetworkEntity::new(client_id),
                     Replication,
                     PlayerPresentation::random(),
+                    PlayerView,
                     Importance::<Distance>::default(),
                     translation_bundle,
                     yaw_bundle,

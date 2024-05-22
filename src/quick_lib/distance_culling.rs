@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::entity::EntityHashMap, 
+    ecs::entity::EntityHashMap,
     prelude::*
 };
 use bevy_replicon::{
@@ -23,6 +23,11 @@ pub struct DistanceAt {
 
 #[derive(Resource, Default)]
 pub struct DistanceMap(EntityHashMap<EntityHashMap<DistanceAt>>);
+
+#[derive(Resource)]
+pub struct DistanceCullingConfig {
+    pub culling_threshold: f32
+}
 
 impl DistanceMap {
     pub fn insert(
@@ -60,45 +65,49 @@ impl DistanceMap {
             None => None
         }
     }
+
+    pub fn remove() {
+        todo!();
+    }
 }
 
 fn calculate_distance_system<C>(
-    changed: Query<
+    query: Query<
         (Entity, &C), 
         (Or<(Changed<C>, Added<C>)>, With<Importance<Distance>>)
     >,
-    query: Query<
+    player_views: Query<
         (Entity, &C), 
-        With<Importance<Distance>>
+        With<PlayerView>
     >,
     mut distance_map: ResMut<DistanceMap>,
     replicon_tick: Res<RepliconTick>
 )
 where C: Component + DistanceCalculatable {
-    for (l_e, l_c) in changed.iter() {
+    for (e, c) in query.iter() {
         let tick = replicon_tick.get();
 
-        for (r_e, r_c) in query.iter() {
-            if l_e == r_e {
+        for (player_e, player_c) in player_views.iter() {
+            if e == player_e {
                 continue;
             }
 
-            if let Some(d) = distance_map.get(&l_e, &r_e) {
+            if let Some(d) = distance_map.get(&player_e, &e) {
                 if d.tick == tick {
                     continue;
                 }
             }
 
-            let distance = l_c.distance(&r_c);
+            let distance = player_c.distance(&c);
             let distance_at = DistanceAt{
                 tick,
                 distance
             };
             
-            distance_map.insert(l_e, r_e, distance_at);
+            distance_map.insert(player_e, e, distance_at);
             info!(
                 "updated distance from: {:?} to: {:?} tick: {} distance: {}",
-                l_e, r_e,
+                player_e, e,
                 tick, 
                 distance
             );
@@ -107,23 +116,69 @@ where C: Component + DistanceCalculatable {
 }
 
 fn distance_culling_system(
-    distance_map: Res<DistanceMap>
+    query: Query<Entity, With<Importance<Distance>>>,
+    player_views: Query<(Entity, &NetworkEntity), With<PlayerView>>,
+    distance_map: Res<DistanceMap>,
+    culling_config: Res<DistanceCullingConfig>,
+    mut connected_clients: ResMut<ConnectedClients>
 ) {
     if distance_map.is_changed() {
+        for (player_e, player_net_e) in player_views.iter() {
+            let client_id = player_net_e.client_id();
+            let client_visibility = match connected_clients.get_client_mut(client_id) {
+                Some(c) => c.visibility_mut(),
+                None => {
+                    error!("client is not mapped in connected_clients, disconnected?");
+                    continue;
+                }
+            };
+            
+            for e in query.iter() {
+                if player_e == e {
+                    continue;
+                }
 
+                let distance_at = match distance_map.get(&player_e, &e) {
+                    Some(d) => d,
+                    None => {
+                        warn!("distance {player_e:?}:{e:?} not found");
+                        continue;
+                    }
+                };
+
+                if distance_at.distance >= culling_config.culling_threshold {
+                    if client_visibility.is_visible(e) {
+                        info!("{player_e:?}:{e:?} is not visible now");
+                        client_visibility.set_visibility(e, false);
+                    }
+                } else {
+                    if !client_visibility.is_visible(e) {
+                        info!("{player_e:?}:{e:?} is visible now");
+                        client_visibility.set_visibility(e, true);
+                    }
+                }
+            }
+        }
     }
 }
 
 pub trait DistanceCullingAppExt {
-    fn use_distance_culling<C>(&mut self) -> &mut Self
+    fn use_distance_culling<C>(
+        &mut self,
+        culling_config: DistanceCullingConfig
+    ) -> &mut Self
     where C: Component + DistanceCalculatable;
 }
 
 impl DistanceCullingAppExt for App {
-    fn use_distance_culling<C>(&mut self) -> &mut Self
+    fn use_distance_culling<C>(
+        &mut self,
+        culling_config: DistanceCullingConfig
+    ) -> &mut Self
     where C: Component + DistanceCalculatable {
         if self.world.contains_resource::<RepliconServer>() {
             self.insert_resource(DistanceMap::default())
+            .insert_resource(culling_config)
             .add_systems(PostUpdate, (
                 calculate_distance_system::<C>,
                 distance_culling_system

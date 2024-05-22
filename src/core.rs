@@ -6,3 +6,4 @@ pub mod event_snapshot;
 pub mod network_entity;
 pub mod prediction;
 pub mod importance;
+pub mod player_view;

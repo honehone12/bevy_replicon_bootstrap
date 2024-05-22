@@ -31,7 +31,11 @@ impl Plugin for GameCommonPlugin {
         )
         .use_replicated_component_snapshot::<NetworkTranslation2D>()
         .use_replicated_component_snapshot::<NetworkYaw>()
-        .use_distance_culling::<NetworkTranslation2D>()
+        .use_distance_culling::<NetworkTranslation2D>(
+            DistanceCullingConfig{
+                culling_threshold: DISTANCE_CULLING_THREASHOLD
+            }
+        )
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();

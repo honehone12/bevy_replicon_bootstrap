@@ -23,6 +23,8 @@ pub const TRANSLATION_ERROR_THRESHOLD: f32 = 1.0;
 // 1sec / network tick
 pub const PREDICTION_ERROR_COUNT_THRESHOLD: u32 = 10;
 
+pub const DISTANCE_CULLING_THREASHOLD: f32 = 10.0;
+
 pub fn get_dev_protocol_id() -> u64 {
     if cfg!(debug_assertions) {
         0x655ea1eecade99ad

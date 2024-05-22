@@ -24,7 +24,8 @@ pub mod prelude {
             player_entity_map::*,
             network_entity::*,
             prediction::*,
-            importance::*
+            importance::*,
+            player_view::*
         },
         quick_lib::{
             client_builder::*,

@@ -28,13 +28,18 @@ pub struct ServerBuilder {
 
 impl ServerBuilder {
     pub fn build_replicon(&self) -> (PluginGroupBuilder, PluginGroupBuilder) {
-        let replicon = RepliconPlugins.build().disable::<ClientPlugin>().set(
+        let replicon = RepliconPlugins.build()
+        .disable::<ClientPlugin>()
+        .set(
             ServerPlugin{
                 tick_policy: TickPolicy::MaxTickRate(self.network_tick_rate),
+                visibility_policy: VisibilityPolicy::Blacklist,
                 ..default()
             }
         );
-        let replicon_renet = RepliconRenetPlugins.build().disable::<RepliconRenetClientPlugin>(); 
+        let replicon_renet = RepliconRenetPlugins.build()
+        .disable::<RepliconRenetClientPlugin>(); 
+        
         (replicon, replicon_renet)
     }
 
