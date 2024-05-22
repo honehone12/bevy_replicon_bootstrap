@@ -1,6 +1,6 @@
 use bevy::{
-    ecs::entity::EntityHashMap,
-    prelude::*
+    prelude::*, 
+    utils::HashMap
 };
 use bevy_replicon::{
     prelude::*, 
@@ -22,7 +22,7 @@ pub struct DistanceAt {
 }
 
 #[derive(Resource, Default)]
-pub struct DistanceMap(EntityHashMap<EntityHashMap<DistanceAt>>);
+pub struct DistanceMap(HashMap<(Entity, Entity), DistanceAt>);
 
 #[derive(Resource)]
 pub struct DistanceCullingConfig {
@@ -31,39 +31,30 @@ pub struct DistanceCullingConfig {
 
 impl DistanceMap {
     pub fn insert(
-        &mut self, 
-        l: Entity, r: Entity, 
+        &mut self,
+        key_l: Entity, key_r: Entity,
         distance_at: DistanceAt
     ) -> Option<DistanceAt> {
-        if let Some(l_map) = self.0.get_mut(&l) {
-            return l_map.insert(r, distance_at)
-        }
+        let key = if key_l >= key_r {
+            (key_l, key_r)
+        } else {
+            (key_r, key_l)
+        };
 
-        match self.0.get_mut(&r) {
-            Some(r_map) => r_map.insert(l, distance_at),
-            None => {
-                self.0
-                .entry(l)
-                .or_insert(default())
-                .insert(r, distance_at)
-            }
-        }
+        self.0.insert(key, distance_at)
     }
 
     pub fn get(
         &self,
-        l: &Entity, r: &Entity
+        key_l: Entity, key_r: Entity
     ) -> Option<&DistanceAt> {
-        if let Some(l_map) = self.0.get(l) {
-            if let Some(d) = l_map.get(r) {
-                return Some(d)
-            }
-        }
+        let key = if key_l >= key_r {
+            (key_l, key_r)
+        } else {
+            (key_r, key_l)
+        };
 
-        match self.0.get(r) {
-            Some(r_map) => r_map.get(l),
-            None => None
-        }
+        return self.0.get(&key)
     }
 
     pub fn remove() {
@@ -84,33 +75,34 @@ fn calculate_distance_system<C>(
     server_tick: Res<ServerTick>
 )
 where C: Component + DistanceCalculatable {
-    for (e, c) in query.iter() {
+    if !query.is_empty() {
         let tick = server_tick.get();
-
-        for (player_e, player_c) in player_views.iter() {
-            if e == player_e {
-                continue;
-            }
-
-            if let Some(d) = distance_map.get(&player_e, &e) {
-                if d.tick == tick {
+        for (player_e, player_c) in player_views.iter() {    
+            for (e, c) in query.iter() {
+                if e == player_e {
                     continue;
                 }
-            }
-
-            let distance = player_c.distance(&c);
-            let distance_at = DistanceAt{
-                tick,
-                distance
-            };
-            
-            distance_map.insert(player_e, e, distance_at);
-            info!(
-                "updated distance from: {:?} to: {:?} tick: {} distance: {}",
-                player_e, e,
-                tick, 
-                distance
-            );
+    
+                if let Some(d) = distance_map.get(player_e, e) {
+                    if d.tick == tick {
+                        continue;
+                    }
+                }
+    
+                let distance = player_c.distance(&c);
+                let distance_at = DistanceAt{
+                    tick,
+                    distance
+                };
+                
+                distance_map.insert(player_e, e, distance_at);
+                info!(
+                    "updated distance from: {:?} to: {:?} tick: {} distance: {}",
+                    player_e, e,
+                    tick, 
+                    distance
+                );
+            }        
         }
     }
 }
@@ -138,7 +130,7 @@ fn distance_culling_system(
                     continue;
                 }
 
-                let distance_at = match distance_map.get(&player_e, &e) {
+                let distance_at = match distance_map.get(player_e, e) {
                     Some(d) => d,
                     None => {
                         warn!("distance {player_e:?}:{e:?} not found");
@@ -146,15 +138,17 @@ fn distance_culling_system(
                     }
                 };
 
+                info!("checking {player_e:?}:{e:?} distance: {}", distance_at.distance);
+
                 if distance_at.distance >= culling_config.culling_threshold {
                     if client_visibility.is_visible(e) {
-                        info!("{player_e:?}:{e:?} is not visible now");
                         client_visibility.set_visibility(e, false);
+                        info!("{player_e:?}:{e:?} is not visible now");
                     }
                 } else {
                     if !client_visibility.is_visible(e) {
-                        info!("{player_e:?}:{e:?} is visible now");
                         client_visibility.set_visibility(e, true);
+                        info!("{player_e:?}:{e:?} is visible now");
                     }
                 }
             }
