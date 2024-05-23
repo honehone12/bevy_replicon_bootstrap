@@ -24,7 +24,7 @@ impl<C: Component + Serialize + DeserializeOwned> PredioctionError<C> {
 
     #[inline]
     pub fn increment_count(&mut self) {
-        self.error_count += 1
+        self.error_count = self.error_count.saturating_add(1);
     }
 
     #[inline]

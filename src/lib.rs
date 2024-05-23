@@ -1,26 +1,29 @@
 pub mod dev;
-pub mod quick_lib;
-pub mod core;
+pub mod component_snapshot; 
+pub mod event_snapshot;
+pub mod interpolation;
+pub mod network_event;
+pub mod network_entity;
+pub mod prediction;
+pub mod culling;
+pub mod client_builder;
+pub mod server_builder;
+pub mod network_transform;
+pub mod player_entity;
 
 pub mod prelude {
     pub use crate::{
-        core::{
-            component_snapshot::*, 
-            event_snapshot::*,
-            interpolation::*,
-            network_event::*,
-            player_entity_map::*,
-            network_entity::*,
-            prediction::*,
-            importance::*
-        },
-        quick_lib::{
-            client_builder::*,
-            server_builder::*,
-            network_transform::*,
-            distance_culling::*,
-            player_entity::*
-        },
+        network_entity::*,
+        network_event::*,
+        network_transform::*,
+        component_snapshot::*, 
+        event_snapshot::*,
+        interpolation::*,
+        prediction::*,
+        culling::*,
+        player_entity::*,
+        server_builder::*,
+        client_builder::*,
         RepliconActionPlugin
     };
 }

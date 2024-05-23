@@ -1,5 +1,6 @@
+use std::marker::PhantomData;
 use bevy::{
-    prelude::*, 
+    prelude::*,
     utils::HashMap
 };
 use bevy_replicon::{
@@ -9,6 +10,26 @@ use bevy_replicon::{
 use crate::prelude::*;
 
 #[derive(Component, Default)]
+pub struct Importance<T>(PhantomData<T>);
+
+#[derive(Component)]
+pub enum ImportanceModifier {
+    Always,
+    Multiply {
+        multiplier: f32
+    }
+}
+
+impl Default for ImportanceModifier {
+    fn default() -> Self {
+        Self::Multiply { 
+            multiplier: 1.0 
+        }
+    }
+}
+
+
+#[derive(Component)]
 pub struct PlayerView;
 
 #[derive(Default)]
