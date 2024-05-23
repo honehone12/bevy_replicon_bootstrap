@@ -22,22 +22,19 @@ pub struct GameServerPlugin;
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(GameCommonPlugin)
-        .insert_resource(PlayerEntityMap::default())
         .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
+            handle_player_entity_event,
             handle_fire
         ).chain());
     }
 }
 
 fn handle_server_event(
-    mut commands: Commands,
     mut events: EventReader<ServerEvent>,
-    mut entity_map: ResMut<PlayerEntityMap>,
     netcode_server: Res<NetcodeServerTransport>,
-    server_tick: Res<ServerTick>,
 ) {
     for e in events.read() {
         match e {
@@ -60,64 +57,55 @@ fn handle_server_event(
                     }
                 };
 
-                let tick = server_tick.get();
-                let translation_bundle = match NetworkTranslation2DWithSnapshots::new(
-                    default(), 
-                    tick, 
-                    DEV_MAX_SNAPSHOT_SIZE
-                ) {
-                    Ok(b) => b,
-                    Err(e) => {
-                        error(e.into());
-                        return;
-                    }
-                };
-                let yaw_bundle = match NetworkYawWithSnapshots::new(
-                    default(), 
-                    tick, 
-                    DEV_MAX_SNAPSHOT_SIZE
-                ) {
-                    Ok(b) => b,
-                    Err(e) => {
-                        error(e.into());
-                        return;
-                    }
-                };
-
-                let movement_snaps = EventSnapshots::<NetworkMovement2D>
-                ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-
-                let entity = commands.spawn((
-                    NetworkEntity::new(client_id),
-                    Replicated,
-                    PlayerPresentation::random(),
-                    PlayerView,
-                    Importance::<Distance>::default(),
-                    translation_bundle,
-                    yaw_bundle,
-                    movement_snaps
-                ))
-                .id();
-
-                match entity_map.try_insert(*client_id, entity) {
-                    Ok(()) => (),
-                    Err(e) => {
-                        error(e.into());
-                        return;
-                    }
-                }                
                 info!("client: {client_id:?} uuid: {uuid} connected");
             }
             ServerEvent::ClientDisconnected { client_id, reason } => {
-                match entity_map.get(client_id) {
-                    Some(e) => {
-                        commands.entity(*e).despawn();
-                        entity_map.remove(client_id);
-                    }
-                    None => ()
-                }
                 info!("client: {client_id:?} disconnected with reason: {reason}");
             }
+        }
+    }
+}
+
+fn handle_player_entity_event(
+    mut commands: Commands,
+    mut events: EventReader<PlayerEntityEvent>,
+    server_tick: Res<ServerTick>,
+) {
+    for e in events.read() {
+        if let PlayerEntityEvent::Spawned { client_id: _, entity } = e {
+            let tick = server_tick.get();
+            let translation_bundle = match NetworkTranslation2DWithSnapshots::new(
+                default(), 
+                tick, 
+                DEV_MAX_SNAPSHOT_SIZE
+            ) {
+                Ok(b) => b,
+                Err(e) => {
+                    error(e.into());
+                    return;
+                }
+            };
+            let yaw_bundle = match NetworkYawWithSnapshots::new(
+                default(), 
+                tick, 
+                DEV_MAX_SNAPSHOT_SIZE
+            ) {
+                Ok(b) => b,
+                Err(e) => {
+                    error(e.into());
+                    return;
+                }
+            };
+
+            let movement_snaps = EventSnapshots::<NetworkMovement2D>
+            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+
+            commands.entity(*entity).insert((
+                PlayerPresentation::random(),
+                translation_bundle,
+                yaw_bundle,
+                movement_snaps
+            ));
         }
     }
 }

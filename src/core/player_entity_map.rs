@@ -1,5 +1,5 @@
 use bevy::{prelude::*, utils::HashMap};
-use bevy_replicon::core::ClientId;
+use bevy_replicon::prelude::*;
 use anyhow::bail;
 
 #[derive(Resource, Default)]
@@ -40,6 +40,11 @@ impl PlayerEntitiesMap {
                 self.0.insert(client_id, vec![entity]);
             }
         }
+    }
+
+    #[inline]
+    pub fn get(&mut self, client_id: &ClientId) -> Option<&Vec<Entity>> {
+        self.0.get(client_id)
     }
 
     #[inline]

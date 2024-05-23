@@ -7,8 +7,8 @@ pub struct NetworkEntity(ClientId);
 
 impl NetworkEntity {
     #[inline]
-    pub fn new(client_id: &ClientId) -> Self {
-        Self(*client_id)
+    pub fn new(client_id: ClientId) -> Self {
+        Self(client_id)
     }
 
     #[inline]

@@ -16,6 +16,7 @@ pub struct GameCommonPlugin;
 impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RepliconActionPlugin)
+        .use_player_entity_event()
         .use_network_transform_2d(
             NetworkTransformUpdateFns::new(move_2d),
             PlayerMovementParams{
@@ -29,15 +30,15 @@ impl Plugin for GameCommonPlugin {
                 prediction_error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
             }
         )
-        .use_replicated_component_snapshot::<NetworkTranslation2D>()
-        .use_replicated_component_snapshot::<NetworkYaw>()
+        .use_component_snapshot::<NetworkTranslation2D>()
+        .use_component_snapshot::<NetworkYaw>()
         .use_distance_culling::<NetworkTranslation2D>(
             DistanceCullingConfig{
-                culling_threshold: DISTANCE_CULLING_THREASHOLD
+                culling_threshold: DISTANCE_CULLING_THREASHOLD,
+                clean_up_on_disconnect: true
             }
         )
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
-        .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();
     }
 }

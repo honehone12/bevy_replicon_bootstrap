@@ -8,6 +8,9 @@ use bevy_replicon::{
 };
 use crate::prelude::*;
 
+#[derive(Component, Default)]
+pub struct PlayerView;
+
 #[derive(Default)]
 pub struct Distance;
 
@@ -26,10 +29,12 @@ pub struct DistanceMap(HashMap<(Entity, Entity), DistanceAt>);
 
 #[derive(Resource)]
 pub struct DistanceCullingConfig {
-    pub culling_threshold: f32
+    pub culling_threshold: f32,
+    pub clean_up_on_disconnect: bool
 }
 
 impl DistanceMap {
+    #[inline]
     pub fn insert(
         &mut self,
         key_l: Entity, key_r: Entity,
@@ -44,6 +49,7 @@ impl DistanceMap {
         self.0.insert(key, distance_at)
     }
 
+    #[inline]
     pub fn get(
         &self,
         key_l: Entity, key_r: Entity
@@ -57,8 +63,9 @@ impl DistanceMap {
         return self.0.get(&key)
     }
 
-    pub fn remove() {
-        todo!();
+    #[inline]
+    pub fn remove(&mut self, key: Entity) {
+        self.0.retain(|k, _| k.0 != key && k.1 != key);
     }
 }
 
@@ -96,7 +103,7 @@ where C: Component + DistanceCalculatable {
                 };
                 
                 distance_map.insert(player_e, e, distance_at);
-                info!(
+                debug!(
                     "updated distance from: {:?} to: {:?} tick: {} distance: {}",
                     player_e, e,
                     tick, 
@@ -138,20 +145,29 @@ fn distance_culling_system(
                     }
                 };
 
-                info!("checking {player_e:?}:{e:?} distance: {}", distance_at.distance);
+                debug!("checking {player_e:?}:{e:?} distance: {}", distance_at.distance);
 
                 if distance_at.distance >= culling_config.culling_threshold {
                     if client_visibility.is_visible(e) {
                         client_visibility.set_visibility(e, false);
-                        info!("{player_e:?}:{e:?} is not visible now");
                     }
                 } else {
                     if !client_visibility.is_visible(e) {
                         client_visibility.set_visibility(e, true);
-                        info!("{player_e:?}:{e:?} is visible now");
                     }
                 }
             }
+        }
+    }
+}
+
+fn handle_player_entity_event(
+    mut events: EventReader<PlayerEntityEvent>,
+    mut distance_map: ResMut<DistanceMap>
+) {
+    for e in events.read() {
+        if let &PlayerEntityEvent::Despawned { client_id: _, entity } = e {
+            distance_map.remove(entity);
         }
     }
 }
@@ -171,12 +187,23 @@ impl DistanceCullingAppExt for App {
     ) -> &mut Self
     where C: Component + DistanceCalculatable {
         if self.world.contains_resource::<RepliconServer>() {
+            let clean_up = culling_config.clean_up_on_disconnect;
+
             self.insert_resource(DistanceMap::default())
             .insert_resource(culling_config)
             .add_systems(PostUpdate, (
                 calculate_distance_system::<C>,
                 distance_culling_system
-            ).chain().before(ServerSet::Send))
+            ).chain().before(ServerSet::Send));
+
+            if clean_up {
+                self.add_systems(PreUpdate, 
+                    handle_player_entity_event
+                    .after(ServerSet::Receive)
+                );
+            }
+
+            self
         } else if self.world.contains_resource::<RepliconClient>() {
             self
         } else {

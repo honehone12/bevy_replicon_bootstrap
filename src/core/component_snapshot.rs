@@ -150,13 +150,13 @@ fn client_populate_component_snapshots<C: Component + Clone>(
 }
 
 pub trait ComponentSnapshotAppExt {
-    fn use_replicated_component_snapshot<C>(&mut self) 
+    fn use_component_snapshot<C>(&mut self) 
     -> &mut Self
     where C: Component + Serialize + DeserializeOwned + Clone;
 }
 
 impl ComponentSnapshotAppExt for App {
-    fn use_replicated_component_snapshot<C>(&mut self) 
+    fn use_component_snapshot<C>(&mut self) 
     -> &mut Self
     where C: Component + Serialize + DeserializeOwned + Clone {
         if self.world.contains_resource::<RepliconServer>() {

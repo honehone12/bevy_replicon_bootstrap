@@ -302,6 +302,27 @@ fn apply_network_transform_client_system(
     }
 }
 
+fn handle_force_replication_2d(
+    mut query: Query<(
+        &mut Transform,
+        &NetworkTranslation2D 
+    ),
+        With<Owning>
+    >,
+    mut force_replication: EventReader<ForceReplicate<NetworkTranslation2D>>
+) {
+    for _ in force_replication.read() {
+        if let Ok((mut transform, net_translation)) = query.get_single_mut() {
+            warn!(
+                "force replication: before: {}, after: {}",
+                transform.translation,
+                net_translation.0
+            );
+            transform.translation = net_translation.to_3d();
+        }
+    }
+}
+
 pub trait NetworkTransformAppExt {
     fn use_network_transform_2d<P: Resource>(
         &mut self,
@@ -324,6 +345,7 @@ impl NetworkTransformAppExt for App {
             self.insert_resource(transform_update_fns)
             .insert_resource(params)
             .insert_resource(prediction_config)
+            .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
             .add_systems(FixedUpdate, 
                 update_translation_2d_server_system::<P>
             )
@@ -331,6 +353,11 @@ impl NetworkTransformAppExt for App {
             self.insert_resource(transform_update_fns)
             .insert_resource(params)
             .insert_resource(interpolation_config)
+            .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
+            .add_systems(PreUpdate, 
+                handle_force_replication_2d
+                .after(ClientSet::Receive)
+            )
             .add_systems(FixedUpdate, (
                 update_translation_2d_client_system::<P>,
                 apply_network_transform_client_system

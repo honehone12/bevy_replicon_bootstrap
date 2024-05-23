@@ -49,10 +49,6 @@ impl Plugin for GameClientPlugin {
             setup_fixed_camera,
             setup_floor
         ))
-        .add_systems(PreUpdate, 
-            handle_force_replication
-            .after(ClientSet::Receive)
-        )
         .add_systems(Update, (
             handle_transport_error,
             handle_player_spawned,
@@ -205,25 +201,4 @@ fn handle_player_spawned(
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
     } 
-}
-
-fn handle_force_replication(
-    mut query: Query<(
-        &mut Transform,
-        &NetworkTranslation2D 
-    ),
-        With<Owning>
-    >,
-    mut force_replication: EventReader<ForceReplicate<NetworkTranslation2D>>
-) {
-    for _ in force_replication.read() {
-        if let Ok((mut transform, net_translation)) = query.get_single_mut() {
-            warn!(
-                "force replication: before: {}, after: {}",
-                transform.translation,
-                net_translation.0
-            );
-            transform.translation = net_translation.to_3d();
-        }
-    }
 }
