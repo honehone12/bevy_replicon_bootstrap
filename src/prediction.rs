@@ -8,7 +8,6 @@ pub struct PredictionErrorThresholdConfig {
     pub prediction_error_count_threshold: u32
 }
 
-
 #[derive(Component, Default)]
 pub struct PredioctionError<C>
 where C: Component + Serialize + DeserializeOwned {

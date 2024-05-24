@@ -157,8 +157,7 @@ fn handle_player_spawned(
         &Confirmed
     ), 
         Added<NetworkEntity>
-    >,
-    client: Res<Client>,
+    >
 ) {
     for (e, net_e, presentation, net_t2d, net_yaw, confirmed_tick) in query.iter() {
         let tick = confirmed_tick.last_tick().get();
@@ -194,10 +193,6 @@ fn handle_player_spawned(
             translation_snaps,
             yaw_snaps
         ));
-
-        if net_e.client_id().get() == client.id() {
-            commands.entity(e).insert(Owning);
-        }
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
     } 

@@ -52,13 +52,13 @@ impl NetworkYaw {
 }
 
 #[derive(Bundle)]
-pub struct NetworkTranslation2DWithSnapshots {
+pub struct NetworkTranslation2DBundle {
     pub translation: NetworkTranslation2D,
     pub snaps: ComponentSnapshots<NetworkTranslation2D>,
     pub prediction_error: PredioctionError<NetworkTranslation2D>
 }
 
-impl NetworkTranslation2DWithSnapshots {
+impl NetworkTranslation2DBundle {
     #[inline]
     pub fn new(
         init: Vec3, 
@@ -78,12 +78,12 @@ impl NetworkTranslation2DWithSnapshots {
 }
 
 #[derive(Bundle)]
-pub struct NetworkYawWithSnapshots {
+pub struct NetworkYawBundle {
     pub yaw: NetworkYaw,
     pub snaps: ComponentSnapshots<NetworkYaw>,
 }
 
-impl NetworkYawWithSnapshots {
+impl NetworkYawBundle {
     #[inline]
     pub fn new(
         init: Quat, 

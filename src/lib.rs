@@ -38,6 +38,13 @@ impl Plugin for RepliconActionPlugin {
     fn build(&self, app: &mut App) {
         app.use_player_entity_event()
         .replicate::<NetworkEntity>();
+
+        if app.world.contains_resource::<RepliconClient>() {
+            app.add_systems(PreUpdate, 
+                mark_owning_system
+                .after(ClientSet::Receive)
+            );
+        }
     }
 }
 

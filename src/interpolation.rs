@@ -8,7 +8,7 @@ pub trait LinearInterpolatable: Component {
     fn linear_interpolate(&self, rhs: &Self, per: f32) -> Self;
 }
 
-pub fn linear_interpolate<C>(
+pub(crate) fn linear_interpolate<C>(
     current: &C,
     snaps: &ComponentSnapshots<C>,
     network_tick_delta: f64

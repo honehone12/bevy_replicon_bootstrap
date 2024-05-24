@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use serde::{Serialize, Deserialize};
+use crate::prelude::*;
 
 #[derive(Component, Serialize, Deserialize)]
 pub struct NetworkEntity(ClientId);
@@ -19,3 +20,16 @@ impl NetworkEntity {
 
 #[derive(Component)]
 pub struct Owning;
+
+pub(crate) fn mark_owning_system(
+    mut commands: Commands,
+    query: Query<(Entity, &NetworkEntity), Added<NetworkEntity>>,
+    client: Res<Client>
+) {
+    for (e, net_e) in query.iter() {
+        if net_e.client_id().get() == client.id() {
+            commands.entity(e)
+            .insert(Owning);
+        }     
+    }
+}

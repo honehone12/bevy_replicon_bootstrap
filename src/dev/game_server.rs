@@ -74,7 +74,7 @@ fn handle_player_entity_event(
     for e in events.read() {
         if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
-            let translation_bundle = match NetworkTranslation2DWithSnapshots::new(
+            let translation_bundle = match NetworkTranslation2DBundle::new(
                 default(), 
                 tick, 
                 DEV_MAX_SNAPSHOT_SIZE
@@ -85,7 +85,7 @@ fn handle_player_entity_event(
                     return;
                 }
             };
-            let yaw_bundle = match NetworkYawWithSnapshots::new(
+            let yaw_bundle = match NetworkYawBundle::new(
                 default(), 
                 tick, 
                 DEV_MAX_SNAPSHOT_SIZE
