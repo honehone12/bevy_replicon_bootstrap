@@ -66,6 +66,9 @@ impl PlayerEntitiesMap {
     }
 }
 
+#[derive(SystemSet, Clone, Eq, PartialEq, Hash, Debug)]
+pub struct PlayerEntityEventSet;
+
 #[derive(Event)]
 pub enum PlayerEntityEvent {
     Spawned {
@@ -82,7 +85,8 @@ fn handle_server_event(
     mut commands: Commands,
     mut server_evetns: EventReader<ServerEvent>,
     mut player_entity_events: EventWriter<PlayerEntityEvent>, 
-    mut player_entities: ResMut<PlayerEntitiesMap>
+    mut player_entities: ResMut<PlayerEntitiesMap>,
+    mut connected_clients: ResMut<ConnectedClients>
 ) {
     for e in server_evetns.read() {
         match e {
@@ -97,6 +101,15 @@ fn handle_server_event(
                 .id();
                 player_entities.insert(client_id, entity);
                 
+                let visibility = match connected_clients.get_client_mut(client_id) {
+                    Some(c) => c.visibility_mut(),
+                    None => {
+                        // this is fatal, client can not see it's entity
+                        panic!("could not find client vivibility, wrong scheduling?");
+                    }
+                };
+                visibility.set_visibility(entity, true);
+
                 player_entity_events.send(PlayerEntityEvent::Spawned { 
                     client_id, 
                     entity
@@ -126,11 +139,15 @@ pub trait PlayerEntityAppExt {
 impl PlayerEntityAppExt for App {
     fn use_player_entity_event(&mut self) -> &mut Self {
         if self.world.contains_resource::<RepliconServer>() {
-            self.insert_resource(PlayerEntitiesMap::default())
+            self.configure_sets(PreUpdate, 
+                PlayerEntityEventSet
+                .after(ServerSet::Receive)
+            )
+            .insert_resource(PlayerEntitiesMap::default())
             .add_event::<PlayerEntityEvent>()
             .add_systems(PreUpdate, 
                 handle_server_event
-                .after(ServerSet::SendEvents)
+                .after(PlayerEntityEventSet)
             )
         } else if self.world.contains_resource::<RepliconClient>() {
             self

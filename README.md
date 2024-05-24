@@ -2,5 +2,6 @@
 Implementing......
 - general purpose cache of components and events
 - interpolation
+- client side prediction
 - backwards reconciliation
-- distance based culling
+- replication culling

@@ -1,5 +1,4 @@
 use std::net::{IpAddr, Ipv4Addr};
-
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_action::{

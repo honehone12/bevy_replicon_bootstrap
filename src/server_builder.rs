@@ -33,7 +33,7 @@ impl ServerBuilder {
         .set(
             ServerPlugin{
                 tick_policy: TickPolicy::MaxTickRate(self.network_tick_rate),
-                visibility_policy: VisibilityPolicy::Blacklist,
+                visibility_policy: VisibilityPolicy::Whitelist,
                 ..default()
             }
         );

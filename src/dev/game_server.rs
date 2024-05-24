@@ -72,7 +72,7 @@ fn handle_player_entity_event(
     server_tick: Res<ServerTick>,
 ) {
     for e in events.read() {
-        if let PlayerEntityEvent::Spawned { client_id: _, entity } = e {
+        if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
             let translation_bundle = match NetworkTranslation2DWithSnapshots::new(
                 default(), 
@@ -106,6 +106,8 @@ fn handle_player_entity_event(
                 yaw_bundle,
                 movement_snaps
             ));
+
+            info!("player: {:?} spawned", client_id);
         }
     }
 }

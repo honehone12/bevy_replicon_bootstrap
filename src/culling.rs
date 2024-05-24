@@ -14,20 +14,27 @@ pub struct Importance<T>(PhantomData<T>);
 
 #[derive(Component)]
 pub enum ImportanceModifier {
+    /// disable culling
     Always,
-    Multiply {
+    /// modify distance
+    Modify {
+        /// added to distance
+        /// -100.0 means disble culling within 100 unit
+        addition: f32,
+        /// multiplied to distance
+        /// 0.5 makes distance 2x shorter
         multiplier: f32
     }
 }
 
 impl Default for ImportanceModifier {
     fn default() -> Self {
-        Self::Multiply { 
+        Self::Modify {
+            addition: 0.0, 
             multiplier: 1.0 
         }
     }
 }
-
 
 #[derive(Component)]
 pub struct PlayerView;
@@ -135,8 +142,8 @@ where C: Component + DistanceCalculatable {
     }
 }
 
-fn distance_culling_system(
-    query: Query<Entity, With<Importance<Distance>>>,
+fn culling_system(
+    query: Query<(Entity, &ImportanceModifier)>,
     player_views: Query<(Entity, &NetworkEntity), With<PlayerView>>,
     distance_map: Res<DistanceMap>,
     culling_config: Res<DistanceCullingConfig>,
@@ -145,7 +152,7 @@ fn distance_culling_system(
     if distance_map.is_changed() {
         for (player_e, player_net_e) in player_views.iter() {
             let client_id = player_net_e.client_id();
-            let client_visibility = match connected_clients.get_client_mut(client_id) {
+            let visibility = match connected_clients.get_client_mut(client_id) {
                 Some(c) => c.visibility_mut(),
                 None => {
                     error!("client is not mapped in connected_clients, disconnected?");
@@ -153,28 +160,42 @@ fn distance_culling_system(
                 }
             };
             
-            for e in query.iter() {
+            for (e, modifier) in query.iter() {
                 if player_e == e {
                     continue;
                 }
 
-                let distance_at = match distance_map.get(player_e, e) {
-                    Some(d) => d,
-                    None => {
-                        warn!("distance {player_e:?}:{e:?} not found");
-                        continue;
+                let (multiplier, addition) = match modifier {
+                    &ImportanceModifier::Always => {
+                        if !visibility.is_visible(e) {
+                            visibility.set_visibility(e, true);
+                        }
+                        continue;    
                     }
+                    &ImportanceModifier::Modify { multiplier, addition } 
+                    => (multiplier, addition)
                 };
 
-                debug!("checking {player_e:?}:{e:?} distance: {}", distance_at.distance);
+                let distance = match distance_map.get(player_e, e) {
+                    Some(d) => d.distance,
+                    None => 0.0
+                };
 
-                if distance_at.distance >= culling_config.culling_threshold {
-                    if client_visibility.is_visible(e) {
-                        client_visibility.set_visibility(e, false);
+                debug!(
+                    "checking {player_e:?}:{e:?} distance: {} multiplier: {} addition: {}", 
+                    distance,
+                    multiplier,
+                    addition
+                );
+
+                let result = distance * multiplier + addition;
+                if result >= culling_config.culling_threshold {
+                    if visibility.is_visible(e) {
+                        visibility.set_visibility(e, false);
                     }
                 } else {
-                    if !client_visibility.is_visible(e) {
-                        client_visibility.set_visibility(e, true);
+                    if !visibility.is_visible(e) {
+                        visibility.set_visibility(e, true);
                     }
                 }
             }
@@ -193,16 +214,16 @@ fn handle_player_entity_event(
     }
 }
 
-pub trait DistanceCullingAppExt {
-    fn use_distance_culling<C>(
+pub trait ReplicationCullingAppExt {
+    fn use_replication_culling<C>(
         &mut self,
         culling_config: DistanceCullingConfig
     ) -> &mut Self
     where C: Component + DistanceCalculatable;
 }
 
-impl DistanceCullingAppExt for App {
-    fn use_distance_culling<C>(
+impl ReplicationCullingAppExt for App {
+    fn use_replication_culling<C>(
         &mut self,
         culling_config: DistanceCullingConfig
     ) -> &mut Self
@@ -214,13 +235,13 @@ impl DistanceCullingAppExt for App {
             .insert_resource(culling_config)
             .add_systems(PostUpdate, (
                 calculate_distance_system::<C>,
-                distance_culling_system
+                culling_system
             ).chain().before(ServerSet::Send));
 
             if clean_up {
                 self.add_systems(PreUpdate, 
                     handle_player_entity_event
-                    .after(ServerSet::Receive)
+                    .after(PlayerEntityEventSet)
                 );
             }
 

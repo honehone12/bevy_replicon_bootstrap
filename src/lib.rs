@@ -36,7 +36,8 @@ pub struct RepliconActionPlugin;
 
 impl Plugin for RepliconActionPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<NetworkEntity>();
+        app.use_player_entity_event()
+        .replicate::<NetworkEntity>();
     }
 }
 
