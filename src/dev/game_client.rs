@@ -183,7 +183,7 @@ fn handle_player_spawned(
                 mesh: meshes.add(Mesh::from(Capsule3d::default())),
                 material: materials.add(presentation.color),
                 transform: Transform{
-                    translation: net_t2d.to_vec3(),
+                    translation: TranslationAxis::XZ.unpack(&net_t2d.to_vec3()),
                     rotation: net_yaw.to_quat(),
                     scale: Vec3::ONE
                 },

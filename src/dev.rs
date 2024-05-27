@@ -40,8 +40,7 @@ impl Plugin for GameCommonPlugin {
         )
         .use_relevancy::<PlayerGroup>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
-        .replicate::<PlayerPresentation>()
-        .replicate::<PlayerGroup>();
+        .replicate::<PlayerPresentation>();
     }
 }
 
