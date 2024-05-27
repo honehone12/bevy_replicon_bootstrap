@@ -60,6 +60,31 @@ impl NetworkTranslation for NetworkTranslation2D {
     }
 }
 
+#[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
+pub struct NetworkTranslation3D(pub Vec3);
+
+impl LinearInterpolatable for NetworkTranslation3D {
+    fn linear_interpolate(&self, rhs: &Self, s: f32) -> Self {
+        Self(self.0.lerp(rhs.0, s))
+    }
+}
+
+impl DistanceCalculatable for NetworkTranslation3D {
+    fn distance(&self, rhs: &Self) -> f32 {
+        self.0.distance_squared(rhs.0)
+    }   
+}
+
+impl NetworkTranslation for NetworkTranslation3D {
+    fn from_vec3(vec3: Vec3) -> Self {
+        Self(vec3)
+    }
+    
+    fn to_vec3(&self) -> Vec3 {
+        self.0
+    }
+}
+
 pub trait NetworkRotation: Component {
     fn from_quat(quat: Quat) -> Self;
     fn to_quat(&self) -> Quat;

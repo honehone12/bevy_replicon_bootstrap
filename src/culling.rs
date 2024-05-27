@@ -10,10 +10,7 @@ use bevy_replicon::{
 use crate::prelude::*;
 
 #[derive(Component, Default)]
-pub struct Culling<T: DistanceCalculatable>(PhantomData<T>);
-
-#[derive(Component)]
-pub struct PlayerView;
+pub struct Culling<C: DistanceCalculatable>(PhantomData<C>);
 
 #[derive(Component)]
 pub enum CullingModifier {

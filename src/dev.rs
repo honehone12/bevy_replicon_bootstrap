@@ -38,6 +38,7 @@ impl Plugin for GameCommonPlugin {
                 clean_up_on_disconnect: true
             }
         )
+        .use_relevancy::<PlayerGroup>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>()
         .replicate::<PlayerGroup>();
@@ -62,7 +63,7 @@ impl PlayerPresentation {
     }
 }
 
-#[derive(Component, Serialize, Deserialize)]
+#[derive(Component, Serialize, Deserialize, Default)]
 pub struct PlayerGroup {
     pub group: u8
 }
@@ -76,6 +77,12 @@ impl PlayerGroup {
             0
         };
         Self { group }
+    }
+}
+
+impl RelevantGroup for PlayerGroup {
+    fn is_relevant(&self, rhs: &Self) -> bool {
+        self.group == rhs.group
     }
 }
 

@@ -19,6 +19,9 @@ impl NetworkEntity {
 }
 
 #[derive(Component)]
+pub struct PlayerView;
+
+#[derive(Component)]
 pub struct Owning;
 
 pub(crate) fn mark_owning_system(

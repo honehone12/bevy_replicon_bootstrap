@@ -105,6 +105,7 @@ fn handle_player_entity_event(
 
             commands.entity(*entity).insert((
                 PlayerPresentation::random(),
+                Relevant::<PlayerGroup>::default(),
                 group,
                 translation_bundle,
                 yaw_bundle,
