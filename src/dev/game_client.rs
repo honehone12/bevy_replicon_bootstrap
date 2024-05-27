@@ -129,9 +129,10 @@ fn handle_action(
                         transform.translation.x,
                         transform.translation.z
                     ),
-                    axis: a.movement_vec,
+                    linear_axis: a.movement_vec,
                     index: event_id.id,
-                    timestamp
+                    timestamp,
+                    ..default()
                 });
             }
             if a.is_fire {

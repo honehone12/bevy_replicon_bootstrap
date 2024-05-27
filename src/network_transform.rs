@@ -101,10 +101,12 @@ impl NetworkYawBundle {
     }
 }
 
-#[derive(Event, Serialize, Deserialize, Clone)]
+#[derive(Event, Serialize, Deserialize, Clone, Default)]
 pub struct NetworkMovement2D {
     pub current_translation: Vec2,
-    pub axis: Vec2,
+    pub linear_axis: Vec2,
+    pub rotation_axis: Vec2,
+    pub bits: u32,
     pub index: usize,
     pub timestamp: f64
 }
@@ -121,7 +123,8 @@ impl NetworkEvent for NetworkMovement2D {
 
 pub type NetworkTranslationUpdateFn<P> = fn(
     &mut NetworkTranslation2D,
-    &NetworkMovement2D,
+    &Vec2,
+    &u32,
     &P,
     &Time<Fixed>
 );
@@ -233,15 +236,18 @@ fn update_translation_2d_server_system<P: Resource>(
         let mut translation = net_translation.clone();
         (update_fns.translation_update_fn())(
             &mut translation, 
-            first, 
+            &first.linear_axis,
+            &first.bits, 
             &params, 
             &fixed_time
         );
 
         while let Some(snap) = frontier.next() {
+            let e = snap.event();
             (update_fns.translation_update_fn())(
                 &mut translation, 
-                snap.event(), 
+                &e.linear_axis,
+                &e.bits, 
                 &params, 
                 &fixed_time
             );
@@ -263,7 +269,8 @@ fn update_translation_2d_client_system<P: Resource>(
             let mut translation = NetworkTranslation2D::from_3d(transform.translation);        
             (update_fns.translation_update_fn)(
                 &mut translation, 
-                movement, 
+                &movement.linear_axis,
+                &movement.bits, 
                 &params, 
                 &fixed_time
             );    

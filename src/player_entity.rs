@@ -95,8 +95,8 @@ fn handle_server_event(
                     NetworkEntity::new(client_id),
                     Replicated,
                     PlayerView,
-                    Importance::<Distance>::default(),
-                    ImportanceModifier::default()
+                    Culling::<NetworkTranslation2D>::default(),
+                    CullingModifier::default()
                 ))
                 .id();
                 player_entities.insert(client_id, entity);

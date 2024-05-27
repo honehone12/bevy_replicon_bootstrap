@@ -10,10 +10,13 @@ use bevy_replicon::{
 use crate::prelude::*;
 
 #[derive(Component, Default)]
-pub struct Importance<T>(PhantomData<T>);
+pub struct Culling<T: DistanceCalculatable>(PhantomData<T>);
 
 #[derive(Component)]
-pub enum ImportanceModifier {
+pub struct PlayerView;
+
+#[derive(Component)]
+pub enum CullingModifier {
     /// disable culling
     Always,
     /// modify distance
@@ -27,7 +30,7 @@ pub enum ImportanceModifier {
     }
 }
 
-impl Default for ImportanceModifier {
+impl Default for CullingModifier {
     fn default() -> Self {
         Self::Modify {
             addition: 0.0, 
@@ -35,12 +38,6 @@ impl Default for ImportanceModifier {
         }
     }
 }
-
-#[derive(Component)]
-pub struct PlayerView;
-
-#[derive(Default)]
-pub struct Distance;
 
 pub trait DistanceCalculatable {
     fn distance(&self, rhs: &Self) -> f32;
@@ -56,7 +53,7 @@ pub struct DistanceAt {
 pub struct DistanceMap(HashMap<(Entity, Entity), DistanceAt>);
 
 #[derive(Resource)]
-pub struct DistanceCullingConfig {
+pub struct CullingConfig {
     pub culling_threshold: f32,
     pub clean_up_on_disconnect: bool
 }
@@ -100,8 +97,10 @@ impl DistanceMap {
 fn calculate_distance_system<C>(
     query: Query<
         (Entity, &C), 
-        (Or<(Changed<C>, Added<C>)>, With<Importance<Distance>>)
-    >,
+    (
+        Or<(Changed<C>, Added<C>)>, 
+        With<Culling<NetworkTranslation2D>>
+    )>,
     player_views: Query<
         (Entity, &C), 
         With<PlayerView>
@@ -143,10 +142,10 @@ where C: Component + DistanceCalculatable {
 }
 
 fn culling_system(
-    query: Query<(Entity, &ImportanceModifier)>,
+    query: Query<(Entity, &CullingModifier)>,
     player_views: Query<(Entity, &NetworkEntity), With<PlayerView>>,
     distance_map: Res<DistanceMap>,
-    culling_config: Res<DistanceCullingConfig>,
+    culling_config: Res<CullingConfig>,
     mut connected_clients: ResMut<ConnectedClients>
 ) {
     if distance_map.is_changed() {
@@ -166,13 +165,13 @@ fn culling_system(
                 }
 
                 let (multiplier, addition) = match modifier {
-                    &ImportanceModifier::Always => {
+                    &CullingModifier::Always => {
                         if !visibility.is_visible(e) {
                             visibility.set_visibility(e, true);
                         }
                         continue;    
                     }
-                    &ImportanceModifier::Modify { multiplier, addition } 
+                    &CullingModifier::Modify { multiplier, addition } 
                     => (multiplier, addition)
                 };
 
@@ -217,7 +216,7 @@ fn handle_player_entity_event(
 pub trait ReplicationCullingAppExt {
     fn use_replication_culling<C>(
         &mut self,
-        culling_config: DistanceCullingConfig
+        culling_config: CullingConfig
     ) -> &mut Self
     where C: Component + DistanceCalculatable;
 }
@@ -225,7 +224,7 @@ pub trait ReplicationCullingAppExt {
 impl ReplicationCullingAppExt for App {
     fn use_replication_culling<C>(
         &mut self,
-        culling_config: DistanceCullingConfig
+        culling_config: CullingConfig
     ) -> &mut Self
     where C: Component + DistanceCalculatable {
         if self.world.contains_resource::<RepliconServer>() {

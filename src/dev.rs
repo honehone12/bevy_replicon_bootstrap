@@ -32,7 +32,7 @@ impl Plugin for GameCommonPlugin {
         .use_component_snapshot::<NetworkTranslation2D>()
         .use_component_snapshot::<NetworkYaw>()
         .use_replication_culling::<NetworkTranslation2D>(
-            DistanceCullingConfig{
+            CullingConfig{
                 culling_threshold: DISTANCE_CULLING_THREASHOLD,
                 clean_up_on_disconnect: true
             }
@@ -65,6 +65,10 @@ pub struct PlayerMovementParams {
     pub base_speed: f32
 }
 
+pub struct PlayerMovemtnInput {
+    pub axis: Vec2
+}
+
 #[derive(Event, Serialize, Deserialize, Clone)]
 pub struct NetworkFire {
     pub index: usize,
@@ -83,11 +87,12 @@ impl NetworkEvent for NetworkFire {
 
 pub fn move_2d(
     translation: &mut NetworkTranslation2D,
-    movement: &NetworkMovement2D,
+    axis: &Vec2,
+    _: &u32,
     params: &PlayerMovementParams,
     time: &Time<Fixed>
 ) {
-    let mut dir = movement.axis.normalize();
+    let mut dir = axis.normalize();
     dir.y *= -1.0;
     translation.0 += dir * (params.base_speed * time.delta_seconds())
 }
