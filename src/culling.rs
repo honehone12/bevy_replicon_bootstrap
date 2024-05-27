@@ -39,7 +39,7 @@ impl Default for CullingModifier {
     }
 }
 
-pub trait DistanceCalculatable {
+pub trait DistanceCalculatable: Component {
     fn distance(&self, rhs: &Self) -> f32;
 }
 
@@ -51,12 +51,6 @@ pub struct DistanceAt {
 
 #[derive(Resource, Default)]
 pub struct DistanceMap(HashMap<(Entity, Entity), DistanceAt>);
-
-#[derive(Resource)]
-pub struct CullingConfig {
-    pub culling_threshold: f32,
-    pub clean_up_on_disconnect: bool
-}
 
 impl DistanceMap {
     #[inline]
@@ -93,6 +87,15 @@ impl DistanceMap {
         self.0.retain(|k, _| k.0 != key && k.1 != key);
     }
 }
+
+#[derive(Resource)]
+pub struct CullingConfig {
+    pub culling_threshold: f32,
+    pub clean_up_on_disconnect: bool
+}
+
+#[derive(SystemSet, Clone, Eq, PartialEq, Hash, Debug)]
+pub struct CullingSet;
 
 fn calculate_distance_system<C>(
     query: Query<
@@ -230,12 +233,16 @@ impl ReplicationCullingAppExt for App {
         if self.world.contains_resource::<RepliconServer>() {
             let clean_up = culling_config.clean_up_on_disconnect;
 
-            self.insert_resource(DistanceMap::default())
+            self.configure_sets(PostUpdate, 
+                CullingSet
+                .before(ServerSet::Send)
+            )
+            .insert_resource(DistanceMap::default())
             .insert_resource(culling_config)
             .add_systems(PostUpdate, (
                 calculate_distance_system::<C>,
                 culling_system
-            ).chain().before(ServerSet::Send));
+            ).chain().in_set(CullingSet));
 
             if clean_up {
                 self.add_systems(PreUpdate, 

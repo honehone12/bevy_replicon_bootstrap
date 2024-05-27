@@ -125,10 +125,8 @@ fn handle_action(
 
             if a.has_movement() {
                 movements.send(NetworkMovement2D{
-                    current_translation: Vec2::new(
-                        transform.translation.x,
-                        transform.translation.z
-                    ),
+                    current_translation: TranslationAxis::XZ.pack(&transform.translation)
+                    .xy(),
                     linear_axis: a.movement_vec,
                     index: event_id.id,
                     timestamp,
@@ -185,7 +183,7 @@ fn handle_player_spawned(
                 mesh: meshes.add(Mesh::from(Capsule3d::default())),
                 material: materials.add(presentation.color),
                 transform: Transform{
-                    translation: net_t2d.to_3d(),
+                    translation: net_t2d.to_vec3(),
                     rotation: net_yaw.to_quat(),
                     scale: Vec3::ONE
                 },

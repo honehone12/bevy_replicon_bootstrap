@@ -100,14 +100,18 @@ fn handle_player_entity_event(
             let movement_snaps = EventSnapshots::<NetworkMovement2D>
             ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
 
+            let group = PlayerGroup::random();
+            let group_id = group.group;
+
             commands.entity(*entity).insert((
                 PlayerPresentation::random(),
+                group,
                 translation_bundle,
                 yaw_bundle,
                 movement_snaps
             ));
 
-            info!("player: {:?} spawned", client_id);
+            info!("player: {client_id:?} spawned for group: {group_id}");
         }
     }
 }

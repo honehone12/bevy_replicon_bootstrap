@@ -17,6 +17,7 @@ impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RepliconActionPlugin)
         .use_network_transform_2d(
+            TranslationAxis::XZ,
             NetworkTransformUpdateFns::new(move_2d),
             PlayerMovementParams{
                 base_speed: BASE_SPEED
@@ -38,7 +39,8 @@ impl Plugin for GameCommonPlugin {
             }
         )
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
-        .replicate::<PlayerPresentation>();
+        .replicate::<PlayerPresentation>()
+        .replicate::<PlayerGroup>();
     }
 }
 
@@ -60,13 +62,26 @@ impl PlayerPresentation {
     }
 }
 
+#[derive(Component, Serialize, Deserialize)]
+pub struct PlayerGroup {
+    pub group: u8
+}
+
+impl PlayerGroup {
+    #[inline]
+    pub fn random() -> Self {
+        let group = if random() {
+            1
+        } else {
+            0
+        };
+        Self { group }
+    }
+}
+
 #[derive(Resource)]
 pub struct PlayerMovementParams {
     pub base_speed: f32
-}
-
-pub struct PlayerMovemtnInput {
-    pub axis: Vec2
 }
 
 #[derive(Event, Serialize, Deserialize, Clone)]
@@ -87,12 +102,11 @@ impl NetworkEvent for NetworkFire {
 
 pub fn move_2d(
     translation: &mut NetworkTranslation2D,
-    axis: &Vec2,
-    _: &u32,
+    movement: &NetworkMovement2D,
     params: &PlayerMovementParams,
     time: &Time<Fixed>
 ) {
-    let mut dir = axis.normalize();
+    let mut dir = movement.linear_axis.normalize();
     dir.y *= -1.0;
     translation.0 += dir * (params.base_speed * time.delta_seconds())
 }
