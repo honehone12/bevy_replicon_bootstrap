@@ -121,13 +121,15 @@ impl NetworkRotation for NetworkYaw {
 }
 
 #[derive(Bundle)]
-pub struct NetworkTranslation2DBundle {
-    pub translation: NetworkTranslation2D,
-    pub snaps: ComponentSnapshots<NetworkTranslation2D>,
-    pub prediction_error: PredioctionError<NetworkTranslation2D>
+pub struct NetworkTranslationBundle<T>
+where T: NetworkTranslation + Serialize + DeserializeOwned + Default + Copy {
+    pub translation: T,
+    pub snaps: ComponentSnapshots<T>,
+    pub prediction_error: PredioctionError<T>
 }
 
-impl NetworkTranslation2DBundle {
+impl<T> NetworkTranslationBundle<T>
+where T: NetworkTranslation + Serialize + DeserializeOwned + Default + Copy {
     #[inline]
     pub fn new(
         init: Vec3, 
@@ -135,7 +137,7 @@ impl NetworkTranslation2DBundle {
         max_size: usize
     ) -> anyhow::Result<Self> {
         let mut snaps = ComponentSnapshots::with_capacity(max_size);
-        let translation = NetworkTranslation2D::from_vec3(init);
+        let translation = T::from_vec3(init);
         snaps.insert(translation, tick)?;
         
         Ok(Self{ 
@@ -147,12 +149,15 @@ impl NetworkTranslation2DBundle {
 }
 
 #[derive(Bundle)]
-pub struct NetworkYawBundle {
-    pub angle: NetworkYaw,
-    pub snaps: ComponentSnapshots<NetworkYaw>,
+pub struct NetworkRotationBundle<R>
+where R: NetworkRotation + Serialize + DeserializeOwned + Default + Copy {
+    pub rotation: R,
+    pub snaps: ComponentSnapshots<R>,
+    pub prediction_error: PredioctionError<R>
 }
 
-impl NetworkYawBundle {
+impl<R> NetworkRotationBundle<R>
+where R: NetworkRotation + Serialize + DeserializeOwned + Default + Copy {
     #[inline]
     pub fn new(
         init: Quat, 
@@ -160,12 +165,13 @@ impl NetworkYawBundle {
         max_size: usize
     ) -> anyhow::Result<Self> {
         let mut snaps = ComponentSnapshots::with_capacity(max_size);
-        let angle = NetworkYaw::from_quat(init);
-        snaps.insert(angle, tick)?;
+        let rotation = R::from_quat(init);
+        snaps.insert(rotation, tick)?;
         
         Ok(Self{ 
-            angle, 
-            snaps 
+            rotation, 
+            snaps,
+            prediction_error: default() 
         })
     }
 }
