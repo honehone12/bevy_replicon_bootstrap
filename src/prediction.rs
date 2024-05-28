@@ -2,6 +2,8 @@ use std::marker::PhantomData;
 use bevy::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+use crate::{NetworkRotation, NetworkTranslation};
+
 #[derive(Resource)]
 pub struct PredictionErrorThresholdConfig {
     pub translation_error_threshold: f32,
@@ -33,5 +35,12 @@ impl<C: Component + Serialize + DeserializeOwned> PredioctionError<C> {
 }
 
 #[derive(Event, Serialize, Deserialize, Default)]
-pub struct ForceReplicate<C>(pub PhantomData<C>)
+pub struct ForceReplicate<C>(PhantomData<C>)
 where C: Component + Serialize + DeserializeOwned;
+
+#[derive(Event, Serialize, Deserialize, Default)]
+pub struct ForceReplicateTransform<T, R>(
+    PhantomData<T>,
+    PhantomData<R>
+)
+where T: NetworkTranslation, R: NetworkRotation;

@@ -164,6 +164,10 @@ fn culling_system(
                     continue;
                 }
 
+                // !!
+                // todo!("join relebancy settin here !!"); 
+
+
                 let (multiplier, addition) = match modifier {
                     &CullingModifier::Always => {
                         if !visibility.is_visible(e) {

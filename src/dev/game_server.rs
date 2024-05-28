@@ -85,7 +85,7 @@ fn handle_player_entity_event(
                     return;
                 }
             };
-            let yaw_bundle = match NetworkYawBundle::new(
+            let yaw_bundle = match NetworkAngleBundle::new(
                 default(), 
                 tick, 
                 DEV_MAX_SNAPSHOT_SIZE

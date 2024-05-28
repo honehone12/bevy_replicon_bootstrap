@@ -16,9 +16,9 @@ pub struct GameCommonPlugin;
 impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RepliconActionPlugin)
-        .use_network_transform_2d(
+        .use_network_transform(
             TranslationAxis::XZ,
-            NetworkTransformUpdateFns::new(move_2d),
+            NetworkTransformUpdateRegistry::new(move_2d, rotate_2d),
             PlayerMovementParams{
                 base_speed: BASE_SPEED
             },
@@ -31,7 +31,7 @@ impl Plugin for GameCommonPlugin {
             }
         )
         .use_component_snapshot::<NetworkTranslation2D>()
-        .use_component_snapshot::<NetworkYaw>()
+        .use_component_snapshot::<NetworkAngle>()
         .use_replication_culling::<NetworkTranslation2D>(
             CullingConfig{
                 culling_threshold: DISTANCE_CULLING_THREASHOLD,
@@ -106,7 +106,7 @@ impl NetworkEvent for NetworkFire {
     }
 }
 
-pub fn move_2d(
+fn move_2d(
     translation: &mut NetworkTranslation2D,
     movement: &NetworkMovement2D,
     params: &PlayerMovementParams,
@@ -115,6 +115,15 @@ pub fn move_2d(
     let mut dir = movement.linear_axis.normalize();
     dir.y *= -1.0;
     translation.0 += dir * (params.base_speed * time.delta_seconds())
+}
+
+fn rotate_2d(
+    rotation: &mut NetworkAngle,
+    movement: &NetworkMovement2D,
+    params: &PlayerMovementParams,
+    time: &Time<Fixed>
+) {
+
 }
 
 pub fn handle_transport_error(mut errors: EventReader<NetcodeTransportError>) {

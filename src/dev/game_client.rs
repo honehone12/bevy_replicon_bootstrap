@@ -1,6 +1,5 @@
 use bevy::{
-    prelude::*,
-    utils::SystemTime
+    input::mouse::MouseMotion, prelude::*, utils::SystemTime
 };
 use bevy_replicon::{
     client::confirmed::Confirmed, 
@@ -20,7 +19,8 @@ pub struct KeyboardInputActionMap {
     pub movement_up: KeyCode,
     pub movement_left: KeyCode,
     pub movement_down: KeyCode,
-    pub movement_right: KeyCode
+    pub movement_right: KeyCode,
+    pub jump: KeyCode
 }
 
 #[derive(Resource)]
@@ -38,6 +38,7 @@ impl Plugin for GameClientPlugin {
             movement_left: KeyCode::KeyA,
             movement_down: KeyCode::KeyS,
             movement_right: KeyCode::KeyD,
+            jump: KeyCode::Space
         })
         .insert_resource(MouseInputActionMap{
             fire: MouseButton::Left
@@ -61,24 +62,29 @@ impl Plugin for GameClientPlugin {
 #[derive(Event, Default)]
 pub struct Action {
     pub movement_vec: Vec2,
-    pub is_fire: bool 
+    pub rotation_vec: Vec2,
+    pub has_jump: bool,
+    pub has_fire: bool 
 }
 
 impl Action {
     #[inline]
     pub fn has_movement(&self) -> bool {
-        self.movement_vec != Vec2::ZERO
+        self.movement_vec != Vec2::ZERO 
+        || self.rotation_vec != Vec2::ZERO
+        || self.has_jump
     }
     
     #[inline]
     pub fn has_action(&self) -> bool {
-        self.has_movement() || self.is_fire
+        self.has_movement() || self.has_fire 
     }
 }
 
 fn handle_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mouse: Res<ButtonInput<MouseButton>>,
+    mouse_button: Res<ButtonInput<MouseButton>>,
+    mut mouse_motion: EventReader<MouseMotion>,
     keyboard_action_map: Res<KeyboardInputActionMap>,
     mouse_action_map: Res<MouseInputActionMap>,
     mut actions: EventWriter<Action> 
@@ -97,8 +103,16 @@ fn handle_input(
         action.movement_vec.x -= 1.0
     }
 
-    if mouse.just_pressed(mouse_action_map.fire) {
-        action.is_fire = true;
+    if keyboard.just_pressed(keyboard_action_map.jump) {
+        action.has_jump = true;
+    }
+
+    if mouse_button.just_pressed(mouse_action_map.fire) {
+        action.has_fire = true;
+    }
+
+    for e in mouse_motion.read() {
+        action.rotation_vec += e.delta;
     }
 
     if action.has_action() {
@@ -124,16 +138,25 @@ fn handle_action(
             };
 
             if a.has_movement() {
+                let mut bits = 0;
+                if a.has_jump {
+                    bits |= 0x01;
+                }
+
+                let current_translation = TranslationAxis::XZ.pack(&transform.translation)
+                .xy();  
+
                 movements.send(NetworkMovement2D{
-                    current_translation: TranslationAxis::XZ.pack(&transform.translation)
-                    .xy(),
+                    current_translation,
                     linear_axis: a.movement_vec,
+                    rotation_axis: a.rotation_vec,
+                    bits,
                     index: event_id.id,
                     timestamp,
-                    ..default()
                 });
             }
-            if a.is_fire {
+
+            if a.has_fire {
                 fires.send(NetworkFire{
                     index: event_id.id,
                     timestamp
@@ -152,7 +175,7 @@ fn handle_player_spawned(
         &NetworkEntity, 
         &PlayerPresentation, 
         &NetworkTranslation2D, 
-        &NetworkYaw,
+        &NetworkAngle,
         &Confirmed
     ), 
         Added<NetworkEntity>
