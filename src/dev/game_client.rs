@@ -145,9 +145,7 @@ fn handle_action(
                     bits |= 0x01;
                 }
 
-                let current_translation = TranslationAxis::XZ
-                .pack(&transform.translation)
-                .xy();  
+                let current_translation = transform.translation.xz();  
 
                 movements.send(NetworkMovement2D{
                     current_translation,
@@ -178,7 +176,7 @@ fn handle_player_spawned(
         &NetworkEntity, 
         &PlayerPresentation, 
         &NetworkTranslation2D, 
-        &NetworkAngle,
+        &NetworkYaw,
         &Confirmed
     ), 
         Added<NetworkEntity>

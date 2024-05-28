@@ -18,9 +18,10 @@ impl Plugin for GameCommonPlugin {
         app.add_plugins(RepliconActionPlugin)
         .use_network_transform(
             TranslationAxis::XZ,
-            NetworkTransformUpdateRegistry::new(move_2d, rotate_2d),
+            NetworkTransformUpdateRegistry::new(update_transform),
             PlayerMovementParams{
-                base_speed: BASE_SPEED
+                base_speed: BASE_SPEED,
+                base_angular_speed: BASE_ANGULAR_SPEED
             },
             NetworkTransformInterpolationConfig{
                 network_tick_delta: DEV_NETWORK_TICK_DELTA64 
@@ -31,7 +32,7 @@ impl Plugin for GameCommonPlugin {
             }
         )
         .use_component_snapshot::<NetworkTranslation2D>()
-        .use_component_snapshot::<NetworkAngle>()
+        .use_component_snapshot::<NetworkYaw>()
         .use_replication_culling::<NetworkTranslation2D>(
             CullingConfig{
                 culling_threshold: DISTANCE_CULLING_THREASHOLD,
@@ -80,6 +81,7 @@ impl PlayerGroup {
 }
 
 impl RelevantGroup for PlayerGroup {
+    #[inline]
     fn is_relevant(&self, rhs: &Self) -> bool {
         self.group == rhs.group
     }
@@ -87,7 +89,8 @@ impl RelevantGroup for PlayerGroup {
 
 #[derive(Resource)]
 pub struct PlayerMovementParams {
-    pub base_speed: f32
+    pub base_speed: f32,
+    pub base_angular_speed: f32,
 }
 
 #[derive(Event, Serialize, Deserialize, Clone)]
@@ -97,33 +100,43 @@ pub struct NetworkFire {
 }
 
 impl NetworkEvent for NetworkFire {
+    #[inline]
     fn index(&self) -> usize {
         self.index
     }
 
+    #[inline]
     fn timestamp(&self) -> f64 {
         self.timestamp
     }
 }
 
-fn move_2d(
+fn update_transform(
     translation: &mut NetworkTranslation2D,
+    rotation: &mut NetworkYaw,
     movement: &NetworkMovement2D,
     params: &PlayerMovementParams,
     time: &Time<Fixed>
 ) {
-    let mut dir = movement.linear_axis.normalize();
-    dir.y *= -1.0;
-    translation.0 += dir * (params.base_speed * time.delta_seconds())
-}
+    if movement.rotation_axis != Vec2::ZERO {
+        let mut angle = movement.rotation_axis.x;
+        angle *= params.base_angular_speed * time.delta_seconds();
+        rotation.0 = (rotation.0 - angle) % 360.0;
+        if rotation.0 < 0.0 {
+            rotation.0 = 360.0 + rotation.0;
+        }
+    }
 
-fn rotate_2d(
-    rotation: &mut NetworkAngle,
-    movement: &NetworkMovement2D,
-    params: &PlayerMovementParams,
-    time: &Time<Fixed>
-) {
-
+    if movement.linear_axis != Vec2::ZERO {
+        let axis = Vec3::new(
+            movement.linear_axis.x, 
+            0.0, 
+            -movement.linear_axis.y
+        ).normalize();
+        
+        let dir = (rotation.to_quat() * axis).xz().normalize();
+        translation.0 += dir * (params.base_speed * time.delta_seconds());
+    }
 }
 
 pub fn handle_transport_error(mut errors: EventReader<NetcodeTransportError>) {
