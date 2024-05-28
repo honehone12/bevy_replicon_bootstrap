@@ -1,5 +1,7 @@
 use bevy::{
-    input::mouse::MouseMotion, prelude::*, utils::SystemTime
+    prelude::*, 
+    utils::SystemTime,
+    input::mouse::MouseMotion 
 };
 use bevy_replicon::{
     client::confirmed::Confirmed, 
@@ -143,7 +145,8 @@ fn handle_action(
                     bits |= 0x01;
                 }
 
-                let current_translation = TranslationAxis::XZ.pack(&transform.translation)
+                let current_translation = TranslationAxis::XZ
+                .pack(&transform.translation)
                 .xy();  
 
                 movements.send(NetworkMovement2D{

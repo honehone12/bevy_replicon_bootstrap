@@ -387,16 +387,18 @@ P: Resource {
     }
 }
 
-fn apply_network_transform_client_system<C>(
+fn apply_network_transform_client_system<T, R>(
     mut query: Query<(
         &mut Transform,
-        &C,
-        &ComponentSnapshots<C>
+        &T,
+        &ComponentSnapshots<T>
     ), Without<Owning>>,
     axis: Res<TranslationAxis>,
     config: Res<NetworkTransformInterpolationConfig>
 )
-where C: NetworkTranslation + LinearInterpolatable + Clone {
+where 
+T: NetworkTranslation + LinearInterpolatable + Clone,
+R: NetworkRotation + LinearInterpolatable + Clone {
     for (mut transform, net_translation, translation_snaps) in query.iter_mut() {
         match linear_interpolate(
             net_translation, 
@@ -454,8 +456,8 @@ pub trait NetworkTransformAppExt {
         prediction_config: PredictionErrorThresholdConfig
     ) -> &mut Self
     where
-    T: NetworkTranslation + Serialize + DeserializeOwned + Clone + Default,
-    R: NetworkRotation + Serialize + DeserializeOwned + Clone + Default,
+    T: NetworkTranslation + LinearInterpolatable + Serialize + DeserializeOwned + Clone + Default,
+    R: NetworkRotation + LinearInterpolatable + Serialize + DeserializeOwned + Clone + Default,
     E: NetworkMovement + NetworkEvent + Serialize + DeserializeOwned,
     P: Resource;
 }
@@ -470,15 +472,15 @@ impl NetworkTransformAppExt for App {
         prediction_config: PredictionErrorThresholdConfig
     ) -> &mut Self
     where
-    T: NetworkTranslation + Serialize + DeserializeOwned + Clone + Default,
-    R: NetworkRotation + Serialize + DeserializeOwned + Clone + Default,
+    T: NetworkTranslation + LinearInterpolatable +Serialize + DeserializeOwned + Clone + Default,
+    R: NetworkRotation + LinearInterpolatable + Serialize + DeserializeOwned + Clone + Default,
     E: NetworkMovement + NetworkEvent + Serialize + DeserializeOwned,
     P: Resource {
         if self.world.contains_resource::<RepliconServer>() {
             self.insert_resource(transform_update_fns)
             .insert_resource(params)
             .insert_resource(prediction_config)
-            .add_server_event::<ForceReplicate<NetworkTranslation2D>>(ChannelKind::Ordered)
+            .add_server_event::<ForceReplicateTransform<T, R>>(ChannelKind::Ordered)
             .add_systems(
                 FixedUpdate, 
                 update_transform_server_system::<T, R, E, P>
@@ -495,7 +497,7 @@ impl NetworkTransformAppExt for App {
             )
             .add_systems(FixedUpdate, (
                 update_transform_client_system::<T, R, E, P>,
-                apply_network_transform_client_system::<NetworkTranslation2D>
+                apply_network_transform_client_system::<T, R>
             ).chain())
         } else {
             panic!("could not find replicon server nor client");
