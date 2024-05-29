@@ -127,7 +127,7 @@ fn update_transform(
         angle *= params.base_angular_speed * time.delta_seconds();
         rotation.0 = (rotation.0 - angle) % 360.0;
         if rotation.0 < 0.0 {
-            rotation.0 = 360.0 + rotation.0;
+            rotation.0 += 360.0;
         }
     }
 

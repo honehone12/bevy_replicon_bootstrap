@@ -313,20 +313,33 @@ P: Resource {
         let first = frontier.next()
         .unwrap()
         .event();
-        let trans_idx = match trans_snaps.iter().rposition(
-            |s| s.timestamp() <= first.timestamp()
-        ) {
+        let frontier_time = first.timestamp();
+
+        let trans_idx = match trans_snaps.iter()
+        .rposition(|s| s.timestamp() <= frontier_time) {
             Some(idx) => idx,
             None => {
                 if cfg!(debug_assertions) {
-                    panic!(
-                        "could not find timestamp smaller than: {}, insert one at initialization", 
-                        first.timestamp()
-                    );
+                    panic!("could not find snapshot for timestamp: {frontier_time}");
                 } else {
-                    warn!(
-                        "could not find timestamp smaller than: {}, this will cause fuge jump", 
-                        first.timestamp()
+                    error!(
+                        "could not find snapshot for timestamp: {}, skipping update",
+                        frontier_time
+                    );
+                    continue;
+                }
+            }
+        };
+        let rot_idx = match rot_snaps.iter()
+        .rposition(|s| s.timestamp() <= frontier_time) {
+            Some(idx) => idx,
+            None => {
+                if cfg!(debug_assertions) {
+                    panic!("could not find snapshot for timestamp: {frontier_time}");
+                } else {
+                    error!(
+                        "could not find snapshot for timestamp: {}, skipping update",
+                        frontier_time
                     );
                     continue;
                 }
@@ -338,24 +351,23 @@ P: Resource {
         .unwrap()
         .component()
         .to_vec3(axis.translation);
+        let server_rotation = rot_snaps.get(rot_idx)
+        .unwrap()
+        .component()
+        .to_quat(axis.rotation);
         let client_translation = first.current_translation(axis.translation);
+        let client_rotation = first.current_rotation(axis.rotation);
+        if client_rotation.length_squared() == 0.0 {
+            warn!("client rotation length is zero, skipping update");
+            continue;
+        }
 
         let trans_err = server_translation.distance_squared(client_translation);
         if trans_err > thresholds.translation_threshold {
             trans_pred_err.increment_count();
-            
-            let error_count = trans_pred_err.get_count();
-            warn!(
-                "translation error is over threashold, now prediction error count: {}", 
-                error_count
-            );
-
-            if error_count > thresholds.error_count_threshold {
-                warn!(
-                    "prediction error count is over threashold"
-                );
-
-                force_replication.send(ToClients { 
+            if trans_pred_err.get_count() > thresholds.error_count_threshold {
+                warn!("sending translation force replication for: {:?}", net_e.client_id());
+                force_replication.send(ToClients{ 
                     mode: SendMode::Direct(net_e.client_id()), 
                     event: default()
                 });
@@ -364,6 +376,24 @@ P: Resource {
             }
         } else {
             trans_pred_err.reset_count();
+        }
+
+        let rot_err = server_rotation.normalize()
+        .angle_between(client_rotation.normalize())
+        .to_degrees();
+        if rot_err > thresholds.rotation_threshold {
+            rot_pred_err.increment_count();
+            if rot_pred_err.get_count() > thresholds.error_count_threshold {
+                warn!("sending rotation force replication for: {:?}", net_e.client_id());
+                force_replication.send(ToClients{
+                    mode: SendMode::Direct(net_e.client_id()),
+                    event: default()
+                });
+
+                rot_pred_err.reset_count();    
+            }
+        } else {
+            rot_pred_err.reset_count();
         }
         
         let mut translation = net_trans.clone();

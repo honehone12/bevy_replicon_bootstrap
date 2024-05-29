@@ -146,7 +146,9 @@ fn handle_action(
                 }
 
                 let current_translation = transform.translation.xz();
-                let current_rotation = transform.rotation.to_euler(EulerRot::YXZ).0;  
+                let current_rotation = transform.rotation.to_euler(EulerRot::YXZ)
+                .0
+                .to_degrees();  
 
                 movements.send(NetworkMovement2D{
                     current_translation,
