@@ -17,7 +17,10 @@ impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RepliconActionPlugin)
         .use_network_transform(
-            TranslationAxis::XZ,
+            TransformAxis { 
+                translation: TranslationAxis::XZ, 
+                rotation: RotationAxis::Y
+            },
             NetworkTransformUpdateRegistry::new(update_transform),
             PlayerMovementParams{
                 base_speed: BASE_SPEED,
@@ -32,7 +35,7 @@ impl Plugin for GameCommonPlugin {
             }
         )
         .use_component_snapshot::<NetworkTranslation2D>()
-        .use_component_snapshot::<NetworkYaw>()
+        .use_component_snapshot::<NetworkAngle>()
         .use_replication_culling::<NetworkTranslation2D>(
             CullingConfig{
                 culling_threshold: DISTANCE_CULLING_THREASHOLD,
@@ -113,7 +116,7 @@ impl NetworkEvent for NetworkFire {
 
 fn update_transform(
     translation: &mut NetworkTranslation2D,
-    rotation: &mut NetworkYaw,
+    rotation: &mut NetworkAngle,
     movement: &NetworkMovement2D,
     params: &PlayerMovementParams,
     time: &Time<Fixed>
@@ -134,7 +137,9 @@ fn update_transform(
             -movement.linear_axis.y
         ).normalize();
         
-        let dir = (rotation.to_quat() * axis).xz().normalize();
+        let dir = (rotation.to_quat(RotationAxis::Y) * axis)
+        .xz()
+        .normalize();
         translation.0 += dir * (params.base_speed * time.delta_seconds());
     }
 }

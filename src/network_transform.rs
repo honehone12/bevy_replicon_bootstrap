@@ -3,36 +3,36 @@ use bevy_replicon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use crate::prelude::*;
 
-#[derive(Resource)]
+#[derive(Default, Clone, Copy)]
 pub enum TranslationAxis {
-    XYZ,
+    #[default]
+    Default,
     XY,
     XZ
 }
 
-impl TranslationAxis {
-    #[inline]
-    pub fn pack(&self, vec: &Vec3) -> Vec3 {
-        match self {
-            TranslationAxis::XYZ => *vec,
-            TranslationAxis::XY => Vec3::new(vec.x, vec.y, 0.0),
-            TranslationAxis::XZ => Vec3::new(vec.x, vec.z, 0.0),
-        }
-    }
-    
-    #[inline]
-    pub fn unpack(&self, vec: &Vec3) -> Vec3 {
-        match self {
-            TranslationAxis::XYZ => *vec,
-            TranslationAxis::XY => Vec3::new(vec.x, vec.y, 0.0),
-            TranslationAxis::XZ => Vec3::new(vec.x, 0.0, vec.y),
-        }
-    }
+#[derive(Default, Clone, Copy)]
+pub enum RotationAxis {
+    #[default]
+    Default,
+    Y,
+    Z
+}
+
+#[derive(Resource, Default)]
+pub struct TransformAxis {
+    pub translation: TranslationAxis,
+    pub rotation: RotationAxis,
 }
 
 pub trait NetworkTranslation: Component {
-    fn from_vec3(vec: Vec3) -> Self;
-    fn to_vec3(&self) -> Vec3;
+    fn from_vec3(vec: Vec3, axis: TranslationAxis) -> Self;
+    fn to_vec3(&self, axis: TranslationAxis) -> Vec3;
+}
+
+pub trait NetworkRotation: Component {
+    fn from_quat(quat: Quat, axis: RotationAxis) -> Self;
+    fn to_quat(&self, axis: RotationAxis) -> Quat;
 }
 
 #[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
@@ -54,13 +54,21 @@ impl DistanceCalculatable for NetworkTranslation2D {
 
 impl NetworkTranslation for NetworkTranslation2D {
     #[inline]
-    fn from_vec3(vec3: Vec3) -> Self {
-        Self(Vec2::new(vec3.x, vec3.y))
+    fn from_vec3(vec3: Vec3, axis: TranslationAxis) -> Self {
+        match axis {
+            TranslationAxis::Default 
+            | TranslationAxis::XY => Self(Vec2::new(vec3.x, vec3.y)),
+            TranslationAxis::XZ => Self(Vec2::new(vec3.x, vec3.z)),
+        }
     }
     
     #[inline]
-    fn to_vec3(&self) -> Vec3 {
-        Vec3::new(self.0.x, self.0.y, 0.0)
+    fn to_vec3(&self, axis: TranslationAxis) -> Vec3 {
+        match axis {
+            TranslationAxis::Default
+            | TranslationAxis::XY => Vec3::new(self.0.x, self.0.y, 0.0),
+            TranslationAxis::XZ => Vec3::new(self.0.x, 0.0,  self.0.y),
+        }
     }
 }
 
@@ -83,40 +91,43 @@ impl DistanceCalculatable for NetworkTranslation3D {
 
 impl NetworkTranslation for NetworkTranslation3D {
     #[inline]
-    fn from_vec3(vec3: Vec3) -> Self {
+    fn from_vec3(vec3: Vec3, _: TranslationAxis) -> Self {
         Self(vec3)
     }
     
     #[inline]
-    fn to_vec3(&self) -> Vec3 {
+    fn to_vec3(&self, _: TranslationAxis) -> Vec3 {
         self.0
     }
 }
 
-pub trait NetworkRotation: Component {
-    fn from_quat(quat: Quat) -> Self;
-    fn to_quat(&self) -> Quat;
-}
-
 #[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
-pub struct NetworkYaw(pub f32);
+pub struct NetworkAngle(pub f32);
 
-impl LinearInterpolatable for NetworkYaw {
+impl LinearInterpolatable for NetworkAngle {
     #[inline]
     fn linear_interpolate(&self, rhs: &Self, t: f32) -> Self {
         Self(self.0.lerp(rhs.0, t))
     }
 }
 
-impl NetworkRotation for NetworkYaw {
+impl NetworkRotation for NetworkAngle {
     #[inline]
-    fn from_quat(quat: Quat) -> Self {
-        Self(quat.to_euler(EulerRot::YXZ).0.to_degrees())
+    fn from_quat(quat: Quat, axis: RotationAxis) -> Self {
+        match axis {
+            RotationAxis::Y => Self(quat.to_euler(EulerRot::YXZ).0.to_degrees()),
+            RotationAxis::Z
+            | RotationAxis::Default => Self(quat.to_euler(EulerRot::YXZ).2.to_degrees())
+        }
     }
 
     #[inline]
-    fn to_quat(&self) -> Quat {
-        Quat::from_rotation_y(self.0.to_radians())
+    fn to_quat(&self, axis: RotationAxis) -> Quat {
+        match axis {
+            RotationAxis::Y => Quat::from_rotation_y(self.0.to_radians()),
+            RotationAxis::Z
+            | RotationAxis::Default => Quat::from_rotation_z(self.0.to_radians()),
+        }
     }
 }
 
@@ -132,12 +143,13 @@ impl<T> NetworkTranslationBundle<T>
 where T: NetworkTranslation + Serialize + DeserializeOwned + Default + Copy {
     #[inline]
     pub fn new(
-        init: Vec3, 
+        init: Vec3,
+        axis: TranslationAxis, 
         tick: u32,
         max_size: usize
     ) -> anyhow::Result<Self> {
         let mut snaps = ComponentSnapshots::with_capacity(max_size);
-        let translation = T::from_vec3(init);
+        let translation = T::from_vec3(init, axis);
         snaps.insert(translation, tick)?;
         
         Ok(Self{ 
@@ -161,11 +173,12 @@ where R: NetworkRotation + Serialize + DeserializeOwned + Default + Copy {
     #[inline]
     pub fn new(
         init: Quat, 
+        axis: RotationAxis,
         tick: u32,
         max_size: usize
     ) -> anyhow::Result<Self> {
         let mut snaps = ComponentSnapshots::with_capacity(max_size);
-        let rotation = R::from_quat(init);
+        let rotation = R::from_quat(init, axis);
         snaps.insert(rotation, tick)?;
         
         Ok(Self{ 
@@ -258,6 +271,7 @@ fn update_transform_server_system<T, R, E, P>(
     )>,
     params: Res<P>,
     registry: Res<NetworkTransformUpdateRegistry<T, R, E, P>>,
+    axis: Res<TransformAxis>,
     fixed_time: Res<Time<Fixed>>,
     thresholds: Res<PredictionErrorThresholdConfig>,
     mut force_replication: EventWriter<ToClients<ForceReplicateTransform<T, R>>>
@@ -307,7 +321,7 @@ P: Resource {
         let server_translation = trans_snaps.get(index)
         .unwrap()
         .component()
-        .to_vec3();
+        .to_vec3(axis.translation);
         let client_translation = first.current_translation();
 
         let error = server_translation.distance_squared(client_translation);
@@ -367,7 +381,7 @@ fn update_transform_client_system<T, R, E, P>(
     mut movements: EventReader<E>,
     params: Res<P>,
     registry: Res<NetworkTransformUpdateRegistry<T, R, E, P>>,
-    axis: Res<TranslationAxis>,
+    axis: Res<TransformAxis>,
     fixed_time: Res<Time<Fixed>>
 )
 where 
@@ -377,8 +391,8 @@ E: NetworkEvent + NetworkMovement,
 P: Resource {
     for movement in movements.read() {
         if let Ok(mut transform) = query.get_single_mut() {
-            let mut translation = T::from_vec3(axis.pack(&transform.translation));        
-            let mut rotation = R::from_quat(transform.rotation);
+            let mut translation = T::from_vec3(transform.translation, axis.translation);        
+            let mut rotation = R::from_quat(transform.rotation, axis.rotation);
             (registry.update())(
                 &mut translation,
                 &mut rotation,
@@ -386,8 +400,8 @@ P: Resource {
                 &params,
                 &fixed_time
             );
-            transform.rotation = rotation.to_quat();
-            transform.translation = axis.unpack(&translation.to_vec3());
+            transform.rotation = rotation.to_quat(axis.rotation);
+            transform.translation = translation.to_vec3(axis.translation);
         }       
     }
 }
@@ -398,7 +412,7 @@ fn apply_network_transform_client_system<T, R>(
         &T, &ComponentSnapshots<T>,
         &R, &ComponentSnapshots<R>,
     ), Without<Owning>>,
-    axis: Res<TranslationAxis>,
+    axis: Res<TransformAxis>,
     config: Res<NetworkTransformInterpolationConfig>
 )
 where 
@@ -414,13 +428,13 @@ R: NetworkRotation + LinearInterpolatable + Clone {
             rotation_snaps, 
             config.network_tick_delta
         ) {
-            Ok(r) => transform.rotation = r.to_quat(),
+            Ok(r) => transform.rotation = r.to_quat(axis.rotation),
             Err(e) => {
                 if cfg!(debug_assertions) {
                     panic!("error on rotation interpolation: {e}");
                 } else {
                     error!("error on rotation interpolation: {e}");
-                    transform.rotation = net_rotation.to_quat();
+                    transform.rotation = net_rotation.to_quat(axis.rotation);
                 }
             }
         };
@@ -430,13 +444,13 @@ R: NetworkRotation + LinearInterpolatable + Clone {
             translation_snaps, 
             config.network_tick_delta
         ) {
-            Ok(t) => transform.translation = axis.unpack(&t.to_vec3()),
+            Ok(t) => transform.translation = t.to_vec3(axis.translation),
             Err(e) => {
                 if cfg!(debug_assertions) {
                     panic!("error on translation interpolation: {e}");
                 } else {
                     error!("error on translation interpolation: {e}");
-                    transform.translation = axis.unpack(&net_translation.to_vec3());
+                    transform.translation = net_translation.to_vec3(axis.translation);
                 }
             }
         };
@@ -451,7 +465,7 @@ fn handle_force_replication<T, R>(
         With<Owning>
     >,
     mut force_replication: EventReader<ForceReplicateTransform<T, R>>,
-    axis: Res<TranslationAxis>
+    axis: Res<TransformAxis>
 )
 where 
 T: NetworkTranslation + Serialize + DeserializeOwned,
@@ -462,8 +476,8 @@ R: NetworkRotation + Serialize + DeserializeOwned {
             net_translation, 
             net_rotation
         )) = query.get_single_mut() {
-            transform.rotation = net_rotation.to_quat();
-            transform.translation = axis.unpack(&net_translation.to_vec3());
+            transform.rotation = net_rotation.to_quat(axis.rotation);
+            transform.translation = net_translation.to_vec3(axis.translation);
             warn!("force replicated");
         }
     }
@@ -472,7 +486,7 @@ R: NetworkRotation + Serialize + DeserializeOwned {
 pub trait NetworkTransformAppExt {
     fn use_network_transform<T, R, E, P>(
         &mut self,
-        axis: TranslationAxis,
+        axis: TransformAxis,
         registry: NetworkTransformUpdateRegistry<T, R, E, P>,
         params: P,
         interpolation_config: NetworkTransformInterpolationConfig,
@@ -490,7 +504,7 @@ pub trait NetworkTransformAppExt {
 impl NetworkTransformAppExt for App {
     fn use_network_transform<T, R, E, P>(
         &mut self,
-        axis: TranslationAxis,
+        axis: TransformAxis,
         registry: NetworkTransformUpdateRegistry<T, R, E, P>,
         params: P,
         interpolation_config: NetworkTransformInterpolationConfig,
@@ -504,7 +518,8 @@ impl NetworkTransformAppExt for App {
     E: NetworkMovement + NetworkEvent + Serialize + DeserializeOwned,
     P: Resource {
         if self.world.contains_resource::<RepliconServer>() {
-            self.insert_resource(registry)
+            self.insert_resource(axis)
+            .insert_resource(registry)
             .insert_resource(params)
             .insert_resource(prediction_config)
             .add_server_event::<ForceReplicateTransform<T, R>>(ChannelKind::Ordered)

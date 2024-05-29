@@ -176,16 +176,16 @@ fn handle_player_spawned(
         &NetworkEntity, 
         &PlayerPresentation, 
         &NetworkTranslation2D, 
-        &NetworkYaw,
+        &NetworkAngle,
         &Confirmed
     ), 
         Added<NetworkEntity>
     >
 ) {
-    for (e, net_e, presentation, net_t2d, net_yaw, confirmed_tick) in query.iter() {
+    for (e, net_e, presentation, net_trans, net_rot, confirmed_tick) in query.iter() {
         let tick = confirmed_tick.last_tick().get();
         let mut translation_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-        match translation_snaps.insert(*net_t2d, tick) {
+        match translation_snaps.insert(*net_trans, tick) {
             Ok(()) => (),
             Err(e) => {
                 error(e.into());
@@ -193,7 +193,7 @@ fn handle_player_spawned(
             }
         }
         let mut yaw_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE); 
-        match yaw_snaps.insert(*net_yaw, tick) {
+        match yaw_snaps.insert(*net_rot, tick) {
             Ok(()) => (),
             Err(e) => {
                 error(e.into());
@@ -207,8 +207,8 @@ fn handle_player_spawned(
                 mesh: meshes.add(Mesh::from(Capsule3d::default())),
                 material: materials.add(presentation.color),
                 transform: Transform{
-                    translation: TranslationAxis::XZ.unpack(&net_t2d.to_vec3()),
-                    rotation: net_yaw.to_quat(),
+                    translation: net_trans.to_vec3(TranslationAxis::XZ),
+                    rotation: net_rot.to_quat(RotationAxis::Y),
                     scale: Vec3::ONE
                 },
                 ..default()

@@ -74,9 +74,10 @@ fn handle_player_entity_event(
     for e in events.read() {
         if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
-            let translation_bundle = match NetworkTranslationBundle
+            let trans_bundle = match NetworkTranslationBundle
             ::<NetworkTranslation2D>::new(
-                default(), 
+                default(),
+                TranslationAxis::XZ, 
                 tick, 
                 DEV_MAX_SNAPSHOT_SIZE
             ) {
@@ -86,9 +87,10 @@ fn handle_player_entity_event(
                     return;
                 }
             };
-            let yaw_bundle = match NetworkRotationBundle
-            ::<NetworkYaw>::new(
+            let rot_bundle = match NetworkRotationBundle
+            ::<NetworkAngle>::new(
                 default(), 
+                RotationAxis::Z,
                 tick, 
                 DEV_MAX_SNAPSHOT_SIZE
             ) {
@@ -109,8 +111,8 @@ fn handle_player_entity_event(
                 PlayerPresentation::random(),
                 Relevant::<PlayerGroup>::default(),
                 group,
-                translation_bundle,
-                yaw_bundle,
+                trans_bundle,
+                rot_bundle,
                 movement_snaps
             ));
 
