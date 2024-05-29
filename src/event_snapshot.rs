@@ -6,7 +6,6 @@ use bevy_replicon::{
     prelude::*, 
 };
 use anyhow::bail;
-use serde::{Serialize, de::DeserializeOwned};
 use super::{network_entity::NetworkEntity, network_event::NetworkEvent};
 
 pub struct EventSnapshot<E: NetworkEvent> {
@@ -133,12 +132,11 @@ impl<E: NetworkEvent> EventSnapshots<E> {
     }
 }
 
-fn server_populate_client_event_snapshots<E>(
+fn server_populate_client_event_snapshots<E: NetworkEvent>(
     mut events: EventReader<FromClient<E>>,
     mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>,
     server_tick: Res<ServerTick>
-) 
-where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
+) {
     let tick = server_tick.get();
     for FromClient { client_id, event } in events.read() {
         for (net_e, mut snaps) in query.iter_mut() {
@@ -157,11 +155,10 @@ where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
     }
 }
 
-fn client_populate_client_event_snapshots<E>(
+fn client_populate_client_event_snapshots<E: NetworkEvent>(
     mut query: Query<(&mut EventSnapshots<E>, &Confirmed)>,
     mut events: EventReader<E>,
-)
-where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
+) {
     for event in events.read() {
         for (mut snaps, confirmed_tick) in query.iter_mut() {
             let tick = confirmed_tick.last_tick().get();
@@ -177,19 +174,17 @@ where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
 }
 
 pub trait NetworkEventSnapshotAppExt {
-    fn use_client_event_snapshot<E>(
+    fn use_client_event_snapshot<E: NetworkEvent>(
         &mut self,
         channel: impl Into<RepliconChannel>
-    ) -> &mut Self
-    where E: NetworkEvent + Serialize + DeserializeOwned + Clone;
+    ) -> &mut Self;
 }
 
 impl NetworkEventSnapshotAppExt for App{
-    fn use_client_event_snapshot<E>(
+    fn use_client_event_snapshot<E: NetworkEvent>(
         &mut self,
         channel: impl Into<RepliconChannel>
-    ) -> &mut Self
-    where E: NetworkEvent + Serialize + DeserializeOwned + Clone {
+    ) -> &mut Self {
         if self.world.contains_resource::<RepliconServer>() {
             self.add_systems(PreUpdate, 
                 server_populate_client_event_snapshots::<E>

@@ -25,12 +25,16 @@ pub struct TransformAxis {
     pub rotation: RotationAxis,
 }
 
-pub trait NetworkTranslation: Component {
+pub trait NetworkTranslation
+: Component + DistanceCalculatable + LinearInterpolatable
++ Serialize + DeserializeOwned + Clone + Default {
     fn from_vec3(vec: Vec3, axis: TranslationAxis) -> Self;
     fn to_vec3(&self, axis: TranslationAxis) -> Vec3;
 }
 
-pub trait NetworkRotation: Component {
+pub trait NetworkRotation
+: Component + LinearInterpolatable 
++ Serialize + DeserializeOwned + Clone + Default {
     fn from_quat(quat: Quat, axis: RotationAxis) -> Self;
     fn to_quat(&self, axis: RotationAxis) -> Quat;
 }
@@ -189,7 +193,7 @@ where R: NetworkRotation + Serialize + DeserializeOwned + Default + Copy {
     }
 }
 
-pub trait NetworkMovement: Event {
+pub trait NetworkMovement: NetworkEvent {
     fn current_translation(&self, axis: TranslationAxis) -> Vec3;
     fn current_rotation(&self, axis: RotationAxis) -> Quat;
 }
@@ -293,9 +297,9 @@ fn update_transform_server_system<T, R, E, P>(
     mut force_replication: EventWriter<ToClients<ForceReplicateTransform<T, R>>>
 )
 where 
-T: NetworkTranslation + Serialize + DeserializeOwned + Clone + Default,
-R: NetworkRotation + Serialize + DeserializeOwned + Clone + Default, 
-E: NetworkEvent + NetworkMovement,
+T: NetworkTranslation,
+R: NetworkRotation, 
+E: NetworkMovement,
 P: Resource {
     for (
         net_e,
@@ -433,7 +437,7 @@ fn update_transform_client_system<T, R, E, P>(
 where 
 T: NetworkTranslation,
 R: NetworkRotation, 
-E: NetworkEvent + NetworkMovement, 
+E: NetworkMovement, 
 P: Resource {
     for movement in movements.read() {
         if let Ok(mut transform) = query.get_single_mut() {
@@ -462,8 +466,8 @@ fn apply_network_transform_client_system<T, R>(
     config: Res<InterpolationConfig>
 )
 where 
-T: NetworkTranslation + LinearInterpolatable + Clone,
-R: NetworkRotation + LinearInterpolatable + Clone {
+T: NetworkTranslation + LinearInterpolatable,
+R: NetworkRotation + LinearInterpolatable {
     for (
         mut transform, 
         net_translation, translation_snaps,
@@ -514,8 +518,8 @@ fn handle_force_replication<T, R>(
     axis: Res<TransformAxis>
 )
 where 
-T: NetworkTranslation + Serialize + DeserializeOwned,
-R: NetworkRotation + Serialize + DeserializeOwned {
+T: NetworkTranslation,
+R: NetworkRotation {
     for _ in force_replication.read() {
         if let Ok((
             mut transform, 
@@ -539,11 +543,9 @@ pub trait NetworkTransformAppExt {
         prediction_config: PredictionErrorThreshold
     ) -> &mut Self
     where
-    T: NetworkTranslation + LinearInterpolatable 
-    + Serialize + DeserializeOwned + Clone + Default,
-    R: NetworkRotation + LinearInterpolatable 
-    + Serialize + DeserializeOwned + Clone + Default,
-    E: NetworkMovement + NetworkEvent + Serialize + DeserializeOwned,
+    T: NetworkTranslation + LinearInterpolatable,
+    R: NetworkRotation + LinearInterpolatable, 
+    E: NetworkMovement,
     P: Resource;
 }
 
@@ -557,11 +559,9 @@ impl NetworkTransformAppExt for App {
         prediction_config: PredictionErrorThreshold
     ) -> &mut Self
     where
-    T: NetworkTranslation + LinearInterpolatable 
-    + Serialize + DeserializeOwned + Clone + Default,
-    R: NetworkRotation + LinearInterpolatable 
-    + Serialize + DeserializeOwned + Clone + Default,
-    E: NetworkMovement + NetworkEvent + Serialize + DeserializeOwned,
+    T: NetworkTranslation + LinearInterpolatable,
+    R: NetworkRotation + LinearInterpolatable,
+    E: NetworkMovement,
     P: Resource {
         if self.world.contains_resource::<RepliconServer>() {
             self.insert_resource(axis)
