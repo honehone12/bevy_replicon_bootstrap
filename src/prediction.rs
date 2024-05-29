@@ -5,9 +5,10 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use crate::{NetworkRotation, NetworkTranslation};
 
 #[derive(Resource)]
-pub struct PredictionErrorThresholdConfig {
-    pub translation_error_threshold: f32,
-    pub prediction_error_count_threshold: u32
+pub struct PredictionErrorThreshold {
+    pub translation_threshold: f32,
+    pub rotation_threshold: f32,
+    pub error_count_threshold: u32
 }
 
 #[derive(Component, Default)]

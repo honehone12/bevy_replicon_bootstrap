@@ -190,12 +190,14 @@ where R: NetworkRotation + Serialize + DeserializeOwned + Default + Copy {
 }
 
 pub trait NetworkMovement: Event {
-    fn current_translation(&self) -> Vec3;
+    fn current_translation(&self, axis: TranslationAxis) -> Vec3;
+    fn current_rotation(&self, axis: RotationAxis) -> Quat;
 }
 
 #[derive(Event, Serialize, Deserialize, Clone, Default)]
 pub struct NetworkMovement2D {
     pub current_translation: Vec2,
+    pub current_rotation: f32,
     pub linear_axis: Vec2,
     pub rotation_axis: Vec2,
     pub bits: u32,
@@ -217,12 +219,31 @@ impl NetworkEvent for NetworkMovement2D {
 
 impl NetworkMovement for NetworkMovement2D {
     #[inline]
-    fn current_translation(&self) -> Vec3 {
-        Vec3::new( 
-            self.current_translation.x, 
-            self.current_translation.y, 
-            0.0
-        )
+    fn current_translation(&self, axis: TranslationAxis) -> Vec3 {
+        match axis {
+            TranslationAxis::Default
+            | TranslationAxis::XY => Vec3::new(
+                self.current_translation.x, 
+                self.current_translation.y,
+                0.0
+            ),
+            TranslationAxis::XZ => Vec3::new(
+                self.current_translation.x,
+                0.0,
+                self.current_translation.y
+            )
+        }
+    }
+
+    #[inline]
+    fn current_rotation(&self, axis: RotationAxis) -> Quat {
+        match axis {
+            RotationAxis::Y => Quat::from_rotation_y(self.current_rotation.to_radians()),
+            RotationAxis::Z
+            | RotationAxis::Default => Quat::from_rotation_z(
+                self.current_rotation.to_radians()
+            )
+        }
     }
 }
 
@@ -230,7 +251,7 @@ pub type NetworkTransformUpdateFn<T, R, E, P>
 = fn(&mut T, &mut R, &E, &P, &Time<Fixed>);
 
 #[derive(Resource)]
-pub struct NetworkTransformUpdateRegistry<T, R, E, P>(
+pub struct NetworkTransformUpdate<T, R, E, P>(
     NetworkTransformUpdateFn<T, R, E, P>
 )
 where 
@@ -239,7 +260,7 @@ R: NetworkRotation,
 E: NetworkMovement, 
 P: Resource;
 
-impl<T, R, E, P> NetworkTransformUpdateRegistry<T, R, E, P>
+impl<T, R, E, P> NetworkTransformUpdate<T, R, E, P>
 where 
 T: NetworkTranslation, 
 R: NetworkRotation,
@@ -257,11 +278,6 @@ P: Resource {
     }
 }
 
-#[derive(Resource)]
-pub struct NetworkTransformInterpolationConfig {
-    pub network_tick_delta: f64
-}
-
 fn update_transform_server_system<T, R, E, P>(
     mut query: Query<(
         &NetworkEntity,
@@ -270,10 +286,10 @@ fn update_transform_server_system<T, R, E, P>(
         &mut EventSnapshots<E>
     )>,
     params: Res<P>,
-    registry: Res<NetworkTransformUpdateRegistry<T, R, E, P>>,
+    update: Res<NetworkTransformUpdate<T, R, E, P>>,
     axis: Res<TransformAxis>,
     fixed_time: Res<Time<Fixed>>,
-    thresholds: Res<PredictionErrorThresholdConfig>,
+    thresholds: Res<PredictionErrorThreshold>,
     mut force_replication: EventWriter<ToClients<ForceReplicateTransform<T, R>>>
 )
 where 
@@ -297,7 +313,7 @@ P: Resource {
         let first = frontier.next()
         .unwrap()
         .event();
-        let index = match trans_snaps.iter().rposition(
+        let trans_idx = match trans_snaps.iter().rposition(
             |s| s.timestamp() <= first.timestamp()
         ) {
             Some(idx) => idx,
@@ -318,14 +334,14 @@ P: Resource {
         };
 
         // get by found index
-        let server_translation = trans_snaps.get(index)
+        let server_translation = trans_snaps.get(trans_idx)
         .unwrap()
         .component()
         .to_vec3(axis.translation);
-        let client_translation = first.current_translation();
+        let client_translation = first.current_translation(axis.translation);
 
-        let error = server_translation.distance_squared(client_translation);
-        if error > thresholds.translation_error_threshold {
+        let trans_err = server_translation.distance_squared(client_translation);
+        if trans_err > thresholds.translation_threshold {
             trans_pred_err.increment_count();
             
             let error_count = trans_pred_err.get_count();
@@ -334,7 +350,7 @@ P: Resource {
                 error_count
             );
 
-            if error_count > thresholds.prediction_error_count_threshold {
+            if error_count > thresholds.error_count_threshold {
                 warn!(
                     "prediction error count is over threashold"
                 );
@@ -352,7 +368,7 @@ P: Resource {
         
         let mut translation = net_trans.clone();
         let mut rotation = net_rot.clone();
-        (registry.update())(
+        (update.update())(
             &mut translation,
             &mut rotation, 
             &first,
@@ -362,7 +378,7 @@ P: Resource {
 
         while let Some(snap) = frontier.next() {
             let e = snap.event();
-            (registry.update())(
+            (update.update())(
                 &mut translation,
                 &mut rotation, 
                 &e,
@@ -380,7 +396,7 @@ fn update_transform_client_system<T, R, E, P>(
     mut query: Query<&mut Transform, With<Owning>>,
     mut movements: EventReader<E>,
     params: Res<P>,
-    registry: Res<NetworkTransformUpdateRegistry<T, R, E, P>>,
+    update: Res<NetworkTransformUpdate<T, R, E, P>>,
     axis: Res<TransformAxis>,
     fixed_time: Res<Time<Fixed>>
 )
@@ -393,7 +409,7 @@ P: Resource {
         if let Ok(mut transform) = query.get_single_mut() {
             let mut translation = T::from_vec3(transform.translation, axis.translation);        
             let mut rotation = R::from_quat(transform.rotation, axis.rotation);
-            (registry.update())(
+            (update.update())(
                 &mut translation,
                 &mut rotation,
                 &movement,
@@ -413,7 +429,7 @@ fn apply_network_transform_client_system<T, R>(
         &R, &ComponentSnapshots<R>,
     ), Without<Owning>>,
     axis: Res<TransformAxis>,
-    config: Res<NetworkTransformInterpolationConfig>
+    config: Res<InterpolationConfig>
 )
 where 
 T: NetworkTranslation + LinearInterpolatable + Clone,
@@ -487,10 +503,10 @@ pub trait NetworkTransformAppExt {
     fn use_network_transform<T, R, E, P>(
         &mut self,
         axis: TransformAxis,
-        registry: NetworkTransformUpdateRegistry<T, R, E, P>,
+        registry: NetworkTransformUpdate<T, R, E, P>,
         params: P,
-        interpolation_config: NetworkTransformInterpolationConfig,
-        prediction_config: PredictionErrorThresholdConfig
+        interpolation_config: InterpolationConfig,
+        prediction_config: PredictionErrorThreshold
     ) -> &mut Self
     where
     T: NetworkTranslation + LinearInterpolatable 
@@ -505,10 +521,10 @@ impl NetworkTransformAppExt for App {
     fn use_network_transform<T, R, E, P>(
         &mut self,
         axis: TransformAxis,
-        registry: NetworkTransformUpdateRegistry<T, R, E, P>,
+        registry: NetworkTransformUpdate<T, R, E, P>,
         params: P,
-        interpolation_config: NetworkTransformInterpolationConfig,
-        prediction_config: PredictionErrorThresholdConfig
+        interpolation_config: InterpolationConfig,
+        prediction_config: PredictionErrorThreshold
     ) -> &mut Self
     where
     T: NetworkTranslation + LinearInterpolatable 

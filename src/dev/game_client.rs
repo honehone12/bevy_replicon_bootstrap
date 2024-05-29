@@ -145,10 +145,12 @@ fn handle_action(
                     bits |= 0x01;
                 }
 
-                let current_translation = transform.translation.xz();  
+                let current_translation = transform.translation.xz();
+                let current_rotation = transform.rotation.to_euler(EulerRot::YXZ).0;  
 
                 movements.send(NetworkMovement2D{
                     current_translation,
+                    current_rotation,
                     linear_axis: a.movement_vec,
                     rotation_axis: a.rotation_vec,
                     bits,
@@ -184,16 +186,16 @@ fn handle_player_spawned(
 ) {
     for (e, net_e, presentation, net_trans, net_rot, confirmed_tick) in query.iter() {
         let tick = confirmed_tick.last_tick().get();
-        let mut translation_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-        match translation_snaps.insert(*net_trans, tick) {
+        let mut trans_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+        match trans_snaps.insert(*net_trans, tick) {
             Ok(()) => (),
             Err(e) => {
                 error(e.into());
                 return;
             }
         }
-        let mut yaw_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE); 
-        match yaw_snaps.insert(*net_rot, tick) {
+        let mut rot_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE); 
+        match rot_snaps.insert(*net_rot, tick) {
             Ok(()) => (),
             Err(e) => {
                 error(e.into());
@@ -213,8 +215,8 @@ fn handle_player_spawned(
                 },
                 ..default()
             },
-            translation_snaps,
-            yaw_snaps
+            trans_snaps,
+            rot_snaps
         ));
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);

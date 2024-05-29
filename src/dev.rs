@@ -21,17 +21,18 @@ impl Plugin for GameCommonPlugin {
                 translation: TranslationAxis::XZ, 
                 rotation: RotationAxis::Y
             },
-            NetworkTransformUpdateRegistry::new(update_transform),
+            NetworkTransformUpdate::new(update_transform),
             PlayerMovementParams{
                 base_speed: BASE_SPEED,
                 base_angular_speed: BASE_ANGULAR_SPEED
             },
-            NetworkTransformInterpolationConfig{
+            InterpolationConfig{
                 network_tick_delta: DEV_NETWORK_TICK_DELTA64 
             },
-            PredictionErrorThresholdConfig{
-                translation_error_threshold: TRANSLATION_ERROR_THRESHOLD,
-                prediction_error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
+            PredictionErrorThreshold{
+                translation_threshold: TRANSLATION_ERROR_THRESHOLD,
+                rotation_threshold: ROTATION_ERROR_THRESHOLD,
+                error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
             }
         )
         .use_component_snapshot::<NetworkTranslation2D>()

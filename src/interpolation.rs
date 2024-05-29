@@ -4,6 +4,11 @@ use bevy::{
 };
 use super::component_snapshot::ComponentSnapshots;
 
+#[derive(Resource)]
+pub struct InterpolationConfig {
+    pub network_tick_delta: f64
+}
+
 pub trait LinearInterpolatable: Component {
     fn linear_interpolate(&self, rhs: &Self, per: f32) -> Self;
 }
