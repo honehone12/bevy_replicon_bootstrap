@@ -10,10 +10,12 @@ use bevy_replicon::{
 use crate::prelude::*;
 
 #[derive(Component, Default)]
-pub struct Culling<C>(PhantomData<C>)
-where C: DistanceCalculatable + Default;
+pub struct Culling<C>
+where C: DistanceCalculatable + Default {
+    pub modifier: CullingModifier,
+    phantom: PhantomData<C>
+}
 
-#[derive(Component)]
 pub enum CullingModifier {
     /// disable culling
     Always,
@@ -96,16 +98,8 @@ pub struct CullingConfig {
 pub struct CullingSet;
 
 fn calculate_distance_system<C>(
-    query: Query<
-        (Entity, &C), 
-    (
-        Or<(Changed<C>, Added<C>)>, 
-        With<Culling<NetworkTranslation2D>>
-    )>,
-    player_views: Query<
-        (Entity, &C), 
-        With<PlayerView>
-    >,
+    query: Query<(Entity, &C), (Changed<C>, With<Culling<C>>)>,
+    player_views: Query<(Entity, &C), With<PlayerView>>,
     mut distance_map: ResMut<DistanceMap>,
     server_tick: Res<ServerTick>
 )
@@ -142,13 +136,14 @@ where C: DistanceCalculatable + Default {
     }
 }
 
-fn culling_system(
-    query: Query<(Entity, &CullingModifier)>,
+fn culling_system<C>(
+    query: Query<(Entity, &Culling<C>)>,
     player_views: Query<(Entity, &NetworkEntity), With<PlayerView>>,
     distance_map: Res<DistanceMap>,
     culling_config: Res<CullingConfig>,
     mut connected_clients: ResMut<ConnectedClients>
-) {
+)
+where C: DistanceCalculatable + Default {
     if distance_map.is_changed() {
         for (player_e, player_net_e) in player_views.iter() {
             let client_id = player_net_e.client_id();
@@ -160,23 +155,19 @@ fn culling_system(
                 }
             };
             
-            for (e, modifier) in query.iter() {
+            for (e, culling) in query.iter() {
                 if player_e == e {
                     continue;
                 }
 
-                // !!
-                // todo!("join relebancy settin here !!"); 
-
-
-                let (multiplier, addition) = match modifier {
-                    &CullingModifier::Always => {
+                let (multiplier, addition) = match culling.modifier {
+                    CullingModifier::Always => {
                         if !visibility.is_visible(e) {
                             visibility.set_visibility(e, true);
                         }
                         continue;    
                     }
-                    &CullingModifier::Modify { multiplier, addition } 
+                    CullingModifier::Modify { multiplier, addition } 
                     => (multiplier, addition)
                 };
 
@@ -207,24 +198,13 @@ fn culling_system(
     }
 }
 
-fn handle_player_entity_event<C>(
-    mut commands: Commands,
+fn handle_player_entity_event(
     mut events: EventReader<PlayerEntityEvent>,
     mut distance_map: ResMut<DistanceMap>
-)
-where C: DistanceCalculatable + Default {
+) {
     for e in events.read() {
-        match e {
-            &PlayerEntityEvent::Spawned { client_id: _, entity } => {
-                commands.entity(entity)
-                .insert((
-                    Culling::<C>::default(),
-                    CullingModifier::default()
-                ));
-            }
-            &PlayerEntityEvent::Despawned { client_id: _, entity } => {
-                distance_map.remove(entity);
-            }
+        if let &PlayerEntityEvent::Despawned { client_id: _, entity } = e {
+            distance_map.remove(entity);
         }
     }
 }
@@ -233,7 +213,7 @@ where C: DistanceCalculatable + Default {
 pub struct ReplicationCullingPlugin<C>
 where C: Component + DistanceCalculatable {
     pub culling_threshold: f32,
-    pub clean_up_on_disconnect: bool,
+    pub auto_clean: bool,
     pub phantom: PhantomData<C>
 }
 
@@ -248,16 +228,16 @@ where C: DistanceCalculatable + Default {
             .insert_resource(DistanceMap::default())
             .insert_resource(CullingConfig{
                 culling_threshold: self.culling_threshold,
-                clean_up_on_disconnect: self.clean_up_on_disconnect
+                clean_up_on_disconnect: self.auto_clean
             })
             .add_systems(PostUpdate, (
                 calculate_distance_system::<C>,
-                culling_system
+                culling_system::<C>
             ).chain().in_set(CullingSet));
 
-            if self.clean_up_on_disconnect {
+            if self.auto_clean {
                 app.add_systems(PreUpdate, 
-                    handle_player_entity_event::<C>
+                    handle_player_entity_event
                     .after(PlayerEntityEventSet)
                 );
             }

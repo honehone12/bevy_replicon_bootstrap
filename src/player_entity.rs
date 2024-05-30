@@ -37,14 +37,9 @@ pub struct PlayerEntitiesMap(HashMap<ClientId, Vec<Entity>>);
 impl PlayerEntitiesMap {
     #[inline]
     pub fn insert(&mut self, client_id: ClientId, entity: Entity) {
-        match self.0.get_mut(&client_id) {
-            Some(v) => {
-                v.push(entity);
-            }
-            None => {
-                self.0.insert(client_id, vec![entity]);
-            }
-        }
+        let v = self.0.entry(client_id)
+        .or_insert(default());
+        v.push(entity);
     }
 
     #[inline]

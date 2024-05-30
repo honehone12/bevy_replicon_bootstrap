@@ -24,7 +24,7 @@ impl Plugin for GameServerPlugin {
         app.add_plugins(GameCommonPlugin)
         .add_plugins(ReplicationCullingPlugin{
             culling_threshold: DISTANCE_CULLING_THREASHOLD, 
-            clean_up_on_disconnect: true,
+            auto_clean: true,
             phantom: PhantomData::<NetworkTranslation2D>
         })
         .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
@@ -115,7 +115,7 @@ fn handle_player_entity_event(
 
             commands.entity(*entity).insert((
                 PlayerPresentation::random(),
-                Relevant::<PlayerGroup>::default(),
+                Culling::<NetworkTranslation2D>::default(),
                 group,
                 trans_bundle,
                 rot_bundle,

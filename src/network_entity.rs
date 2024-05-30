@@ -3,7 +3,7 @@ use bevy_replicon::prelude::*;
 use serde::{Serialize, Deserialize};
 use crate::prelude::*;
 
-#[derive(Component, Serialize, Deserialize)]
+#[derive(Component, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct NetworkEntity(ClientId);
 
 impl NetworkEntity {
