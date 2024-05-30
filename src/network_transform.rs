@@ -533,51 +533,56 @@ R: NetworkRotation {
     }
 }
 
-pub trait NetworkTransformAppExt {
-    fn use_network_transform<T, R, E, P>(
-        &mut self,
-        axis: TransformAxis,
-        registry: NetworkTransformUpdate<T, R, E, P>,
-        params: P,
-        interpolation_config: InterpolationConfig,
-        prediction_config: PredictionErrorThreshold
-    ) -> &mut Self
-    where
-    T: NetworkTranslation + LinearInterpolatable,
-    R: NetworkRotation + LinearInterpolatable, 
-    E: NetworkMovement,
-    P: Resource;
+pub struct NetworkTransformPlugin<T, R, E, P>
+where
+T: NetworkTranslation,
+R: NetworkRotation,
+E: NetworkMovement,
+P: Resource + Clone {
+    pub translation_axis: TranslationAxis,
+    pub rotation_axis: RotationAxis, 
+    pub update_fn: NetworkTransformUpdateFn<T, R, E, P>,
+    pub params: P,
+    pub network_tick_delta: f64,
+    pub translation_error_threshold: f32,
+    pub rotation_error_threshold: f32,
+    pub error_count_threshold: u32,
 }
 
-impl NetworkTransformAppExt for App {
-    fn use_network_transform<T, R, E, P>(
-        &mut self,
-        axis: TransformAxis,
-        registry: NetworkTransformUpdate<T, R, E, P>,
-        params: P,
-        interpolation_config: InterpolationConfig,
-        prediction_config: PredictionErrorThreshold
-    ) -> &mut Self
-    where
-    T: NetworkTranslation + LinearInterpolatable,
-    R: NetworkRotation + LinearInterpolatable,
-    E: NetworkMovement,
-    P: Resource {
-        if self.world.contains_resource::<RepliconServer>() {
-            self.insert_resource(axis)
-            .insert_resource(registry)
-            .insert_resource(params)
-            .insert_resource(prediction_config)
+impl<T, R, E, P> Plugin for NetworkTransformPlugin<T, R, E, P>
+where
+T: NetworkTranslation,
+R: NetworkRotation,
+E: NetworkMovement,
+P: Resource + Clone  {
+    fn build(&self, app: &mut App) {
+        if app.world.contains_resource::<RepliconServer>() {
+            app.insert_resource(TransformAxis{
+                translation: self.translation_axis,
+                rotation: self.rotation_axis
+            })
+            .insert_resource(NetworkTransformUpdate(self.update_fn))
+            .insert_resource(self.params.clone())
+            .insert_resource(PredictionErrorThreshold{
+                translation_threshold: self.translation_error_threshold,
+                rotation_threshold: self.rotation_error_threshold,
+                error_count_threshold: self.error_count_threshold
+            })
             .add_server_event::<ForceReplicateTransform<T, R>>(ChannelKind::Ordered)
             .add_systems(
                 FixedUpdate, 
                 update_transform_server_system::<T, R, E, P>
-            )
-        } else if self.world.contains_resource::<RepliconClient>() {
-            self.insert_resource(axis)
-            .insert_resource(registry)
-            .insert_resource(params)
-            .insert_resource(interpolation_config)
+            );
+        } else if app.world.contains_resource::<RepliconClient>() {
+            app.insert_resource(TransformAxis{
+                translation: self.translation_axis,
+                rotation: self.rotation_axis
+            })
+            .insert_resource(NetworkTransformUpdate(self.update_fn))
+            .insert_resource(self.params.clone())
+            .insert_resource(InterpolationConfig{
+                network_tick_delta: self.network_tick_delta
+            })
             .add_server_event::<ForceReplicateTransform<T, R>>(ChannelKind::Ordered)
             .add_systems(PreUpdate, 
                 handle_force_replication::<T, R>
@@ -586,7 +591,7 @@ impl NetworkTransformAppExt for App {
             .add_systems(FixedUpdate, (
                 update_transform_client_system::<T, R, E, P>,
                 apply_network_transform_client_system::<T, R>
-            ).chain())
+            ).chain());
         } else {
             panic!("could not find replicon server nor client");
         }

@@ -10,7 +10,8 @@ use bevy_replicon::{
 use crate::prelude::*;
 
 #[derive(Component, Default)]
-pub struct Culling<C: DistanceCalculatable>(PhantomData<C>);
+pub struct Culling<C>(PhantomData<C>)
+where C: DistanceCalculatable + Default;
 
 #[derive(Component)]
 pub enum CullingModifier {
@@ -88,7 +89,7 @@ impl DistanceMap {
 #[derive(Resource)]
 pub struct CullingConfig {
     pub culling_threshold: f32,
-    pub clean_up_on_disconnect: bool
+    pub clean_up_on_disconnect: bool,
 }
 
 #[derive(SystemSet, Clone, Eq, PartialEq, Hash, Debug)]
@@ -108,7 +109,7 @@ fn calculate_distance_system<C>(
     mut distance_map: ResMut<DistanceMap>,
     server_tick: Res<ServerTick>
 )
-where C: Component + DistanceCalculatable {
+where C: DistanceCalculatable + Default {
     if !query.is_empty() {
         let tick = server_tick.get();
         for (player_e, player_c) in player_views.iter() {    
@@ -206,57 +207,62 @@ fn culling_system(
     }
 }
 
-fn handle_player_entity_event(
+fn handle_player_entity_event<C>(
+    mut commands: Commands,
     mut events: EventReader<PlayerEntityEvent>,
     mut distance_map: ResMut<DistanceMap>
-) {
+)
+where C: DistanceCalculatable + Default {
     for e in events.read() {
-        if let &PlayerEntityEvent::Despawned { client_id: _, entity } = e {
-            distance_map.remove(entity);
+        match e {
+            &PlayerEntityEvent::Spawned { client_id: _, entity } => {
+                commands.entity(entity)
+                .insert((
+                    Culling::<C>::default(),
+                    CullingModifier::default()
+                ));
+            }
+            &PlayerEntityEvent::Despawned { client_id: _, entity } => {
+                distance_map.remove(entity);
+            }
         }
     }
 }
 
-pub trait ReplicationCullingAppExt {
-    fn use_replication_culling<C>(
-        &mut self,
-        culling_config: CullingConfig
-    ) -> &mut Self
-    where C: Component + DistanceCalculatable;
+#[derive(Default)]
+pub struct ReplicationCullingPlugin<C>
+where C: Component + DistanceCalculatable {
+    pub culling_threshold: f32,
+    pub clean_up_on_disconnect: bool,
+    pub phantom: PhantomData<C>
 }
 
-impl ReplicationCullingAppExt for App {
-    fn use_replication_culling<C>(
-        &mut self,
-        culling_config: CullingConfig
-    ) -> &mut Self
-    where C: Component + DistanceCalculatable {
-        if self.world.contains_resource::<RepliconServer>() {
-            let clean_up = culling_config.clean_up_on_disconnect;
-
-            self.configure_sets(PostUpdate, 
+impl<C> Plugin for ReplicationCullingPlugin<C>
+where C: DistanceCalculatable + Default {
+    fn build(&self, app: &mut App) {
+        if app.world.contains_resource::<RepliconServer>() {
+            app.configure_sets(PostUpdate, 
                 CullingSet
                 .before(ServerSet::Send)
             )
             .insert_resource(DistanceMap::default())
-            .insert_resource(culling_config)
+            .insert_resource(CullingConfig{
+                culling_threshold: self.culling_threshold,
+                clean_up_on_disconnect: self.clean_up_on_disconnect
+            })
             .add_systems(PostUpdate, (
                 calculate_distance_system::<C>,
                 culling_system
             ).chain().in_set(CullingSet));
 
-            if clean_up {
-                self.add_systems(PreUpdate, 
-                    handle_player_entity_event
+            if self.clean_up_on_disconnect {
+                app.add_systems(PreUpdate, 
+                    handle_player_entity_event::<C>
                     .after(PlayerEntityEventSet)
                 );
             }
-
-            self
-        } else if self.world.contains_resource::<RepliconClient>() {
-            self
         } else {
-            panic!("could not find replicon server nor client");
-        }        
+            panic!("could not find replicon server");
+        }     
     }
 }

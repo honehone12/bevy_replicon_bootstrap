@@ -8,16 +8,18 @@ pub trait RelevantGroup: Component {
 }
 
 #[derive(Component, Default)]
-pub struct Relevant<G: RelevantGroup>(PhantomData<G>);
+pub struct Relevant<G>(PhantomData<G>)
+where G: RelevantGroup + Default;
 
-fn relevancy_system<G: RelevantGroup>(
+fn relevancy_system<G>(
     player_views: Query<
         (Entity, &NetworkEntity, &G), 
         (With<Relevant<G>>, With<PlayerView>)
     >,
     query: Query<(Entity, &G), With<Relevant<G>>>,
     mut connected_clients: ResMut<ConnectedClients>
-) {
+)
+where G: RelevantGroup + Default {
     for (player_e, player_net_e, player_group) in player_views.iter() {
         let client_id = player_net_e.client_id();
         let visibility = match connected_clients.get_client_mut(client_id) {
@@ -42,20 +44,18 @@ fn relevancy_system<G: RelevantGroup>(
     }
 }
 
-pub trait RelevancyAppExt {
-    fn use_relevancy<G: RelevantGroup>(&mut self) -> &mut Self;
-}
+pub struct RelevancyPlugin<G>(pub PhantomData<G>)
+where G: RelevantGroup + Default;
 
-impl RelevancyAppExt for App {
-    fn use_relevancy<G: RelevantGroup>(&mut self) -> &mut Self {
-        if self.world.contains_resource::<RepliconServer>() {
-            self.add_systems(PostUpdate, 
+impl<G> Plugin for RelevancyPlugin<G>
+where G: RelevantGroup + Default {
+    fn build(&self, app: &mut App) {
+        if app.world.contains_resource::<RepliconServer>() {
+            app.add_systems(PostUpdate, 
                 relevancy_system::<G>
                 .after(CullingSet)
                 .before(ServerSet::Send)
-            )
-        } else if self.world.contains_resource::<RepliconClient>() {
-            self
+            );
         } else {
             panic!("could not find replicon server nor client");
         }

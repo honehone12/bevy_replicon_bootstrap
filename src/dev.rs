@@ -3,6 +3,7 @@ pub mod level;
 pub mod game_client;
 pub mod game_server;
 
+use std::marker::PhantomData;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::transport::NetcodeTransportError;
@@ -16,34 +17,21 @@ pub struct GameCommonPlugin;
 impl Plugin for GameCommonPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(RepliconActionPlugin)
-        .use_network_transform(
-            TransformAxis { 
-                translation: TranslationAxis::XZ, 
-                rotation: RotationAxis::Y
-            },
-            NetworkTransformUpdate::new(update_transform),
-            PlayerMovementParams{
+        .add_plugins(NetworkTransformPlugin{
+            translation_axis: TranslationAxis::XZ, 
+            rotation_axis: RotationAxis::Y,
+            update_fn: update_transform,
+            params: PlayerMovementParams{
                 base_speed: BASE_SPEED,
                 base_angular_speed: BASE_ANGULAR_SPEED
             },
-            InterpolationConfig{
-                network_tick_delta: DEV_NETWORK_TICK_DELTA64 
-            },
-            PredictionErrorThreshold{
-                translation_threshold: TRANSLATION_ERROR_THRESHOLD,
-                rotation_threshold: ROTATION_ERROR_THRESHOLD,
-                error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
-            }
-        )
+            network_tick_delta: DEV_NETWORK_TICK_DELTA64,
+            translation_error_threshold: TRANSLATION_ERROR_THRESHOLD,
+            rotation_error_threshold: ROTATION_ERROR_THRESHOLD,
+            error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
+        })
         .use_component_snapshot::<NetworkTranslation2D>()
         .use_component_snapshot::<NetworkAngle>()
-        .use_replication_culling::<NetworkTranslation2D>(
-            CullingConfig{
-                culling_threshold: DISTANCE_CULLING_THREASHOLD,
-                clean_up_on_disconnect: true
-            }
-        )
-        .use_relevancy::<PlayerGroup>()
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();
     }
@@ -91,7 +79,7 @@ impl RelevantGroup for PlayerGroup {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct PlayerMovementParams {
     pub base_speed: f32,
     pub base_angular_speed: f32,

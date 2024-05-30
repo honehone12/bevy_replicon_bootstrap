@@ -22,6 +22,12 @@ pub struct GameServerPlugin;
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(GameCommonPlugin)
+        .add_plugins(ReplicationCullingPlugin{
+            culling_threshold: DISTANCE_CULLING_THREASHOLD, 
+            clean_up_on_disconnect: true,
+            phantom: PhantomData::<NetworkTranslation2D>
+        })
+        .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
         .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
         .add_systems(Update, (
             handle_transport_error,
@@ -144,7 +150,7 @@ fn handle_fire(
                 None => {
                     if cfg!(debug_assertions) {
                         panic!(
-                            "could not find timestamp smaller than {}, insert one at initialization",
+                            "could not find timestamp smaller than {}",
                             event.timestamp()
                         );
                     } else {
