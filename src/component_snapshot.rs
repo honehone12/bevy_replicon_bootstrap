@@ -1,4 +1,4 @@
-use std::collections::{VecDeque, vec_deque::Iter};
+use std::{collections::{vec_deque::Iter, VecDeque}, marker::PhantomData};
 use bevy::{
     prelude::*,
     utils::SystemTime
@@ -148,28 +148,25 @@ fn client_populate_component_snapshots<C: Component + Clone>(
     }
 }
 
-pub trait ComponentSnapshotAppExt {
-    fn use_component_snapshot<C>(&mut self) 
-    -> &mut Self
-    where C: Component + Serialize + DeserializeOwned + Clone;
-}
+pub struct ComponentSnapshotPlugin<C>(pub PhantomData<C>)
+where C: Component + Serialize + DeserializeOwned + Clone;
 
-impl ComponentSnapshotAppExt for App {
-    fn use_component_snapshot<C>(&mut self) 
-    -> &mut Self
-    where C: Component + Serialize + DeserializeOwned + Clone {
-        if self.world.contains_resource::<RepliconServer>() {
-            self.add_systems(PostUpdate,
+impl<C> Plugin for ComponentSnapshotPlugin<C>
+where C: Component + Serialize + DeserializeOwned + Clone {
+    fn build(&self, app: &mut App) {
+        if app.world.contains_resource::<RepliconServer>() {
+            app.replicate::<C>()
+            .add_systems(PostUpdate,
                 server_populate_component_snapshots::<C>
             );
-        } else if self.world.contains_resource::<RepliconClient>() {
-            self.add_systems(PreUpdate, 
+        } else if app.world.contains_resource::<RepliconClient>() {
+            app.replicate::<C>()
+            .add_systems(PreUpdate, 
                 client_populate_component_snapshots::<C>
                 .after(ClientSet::Receive)
             );
         } else {
             panic!("could not find replicon server nor client");
         }
-        self.replicate::<C>()
     }
 }

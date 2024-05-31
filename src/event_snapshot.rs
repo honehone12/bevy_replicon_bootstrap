@@ -1,4 +1,7 @@
-use std::collections::{VecDeque, vec_deque::Iter};
+use std::{
+    collections::{vec_deque::Iter, VecDeque}, 
+    marker::PhantomData
+};
 use bevy::prelude::*;
 use bevy_replicon::{
     client::confirm_history::ConfirmHistory,
@@ -183,30 +186,26 @@ fn client_populate_client_event_snapshots<E: NetworkEvent>(
     }
 }
 
-pub trait NetworkEventSnapshotAppExt {
-    fn use_client_event_snapshot<E: NetworkEvent>(
-        &mut self,
-        channel: impl Into<RepliconChannel>
-    ) -> &mut Self;
+pub struct NetworkEventSnapshotPlugin<E: NetworkEvent>{
+    pub channel_kind: ChannelKind,
+    pub phantom: PhantomData<E>
 }
 
-impl NetworkEventSnapshotAppExt for App{
-    fn use_client_event_snapshot<E: NetworkEvent>(
-        &mut self,
-        channel: impl Into<RepliconChannel>
-    ) -> &mut Self {
-        if self.world.contains_resource::<RepliconServer>() {
-            self.add_systems(PreUpdate, 
+impl<E: NetworkEvent> Plugin for NetworkEventSnapshotPlugin<E> {
+    fn build(&self, app: &mut App) {
+        if app.world.contains_resource::<RepliconServer>() {
+            app.add_client_event::<E>(self.channel_kind)
+            .add_systems(PreUpdate, 
                 server_populate_client_event_snapshots::<E>
                 .after(ServerSet::Receive)    
             );
-        } else if self.world.contains_resource::<RepliconClient>() {
-            self.add_systems(PostUpdate, 
+        } else if app.world.contains_resource::<RepliconClient>() {
+            app.add_client_event::<E>(self.channel_kind)
+            .add_systems(PostUpdate, 
                 client_populate_client_event_snapshots::<E>
             );
         } else {
             panic!("could not find replicon server nor client");
         }
-        self.add_client_event::<E>(channel)
     }
 }
