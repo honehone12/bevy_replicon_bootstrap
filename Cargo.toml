@@ -14,7 +14,7 @@ opt-level = 3
 [dependencies]
 anyhow = "1.0.83"
 bevy = "0.13.2"
-bevy_replicon = "0.25.2"
-bevy_replicon_renet = "0.2.0"
+bevy_replicon = "0.26.1"
+bevy_replicon_renet = "0.3.0"
 rand = "0.8.5"
 serde = "1.0.200"

@@ -1,3 +1,4 @@
+use anyhow::bail;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -204,7 +205,7 @@ pub struct NetworkMovement2D {
     pub current_rotation: f32,
     pub linear_axis: Vec2,
     pub rotation_axis: Vec2,
-    pub bits: u32,
+    pub bits: u16,
     pub index: usize,
     pub timestamp: f64
 }
@@ -218,6 +219,27 @@ impl NetworkEvent for NetworkMovement2D {
     #[inline]
     fn timestamp(&self) -> f64 {
         self.timestamp
+    }
+
+    #[inline]
+    fn validate(&self) -> anyhow::Result<()> {
+        if !self.current_translation.is_finite() {
+            bail!("failed to validate current translation")
+        }
+        if !self.current_rotation.is_finite() {
+            bail!("failed to validate current rotation")
+        }
+        if !self.linear_axis.is_finite() {
+            bail!("failed to validate linear axis")
+        }
+        if !self.rotation_axis.is_finite() {
+            bail!("failed to validate rotation axis")
+        }
+        if !self.timestamp.is_finite() {
+            bail!("failed to validate timestamp")
+        }
+
+        Ok(())
     }
 }
 

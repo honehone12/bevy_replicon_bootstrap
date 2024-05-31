@@ -28,7 +28,6 @@ impl Plugin for GameServerPlugin {
             phantom: PhantomData::<NetworkTranslation2D>
         })
         .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
-        .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
@@ -85,7 +84,7 @@ fn handle_player_entity_event(
                 default(),
                 TranslationAxis::XZ, 
                 tick, 
-                DEV_MAX_SNAPSHOT_SIZE
+                DEV_SERVER_MAX_SNAPSHOT_SIZE
             ) {
                 Ok(b) => b,
                 Err(e) => {
@@ -98,7 +97,7 @@ fn handle_player_entity_event(
                 default(), 
                 RotationAxis::Z,
                 tick, 
-                DEV_MAX_SNAPSHOT_SIZE
+                DEV_SERVER_MAX_SNAPSHOT_SIZE
             ) {
                 Ok(b) => b,
                 Err(e) => {
@@ -108,7 +107,7 @@ fn handle_player_entity_event(
             };
 
             let movement_snaps = EventSnapshots::<NetworkMovement2D>
-            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+            ::with_capacity(DEV_SERVER_MAX_SNAPSHOT_SIZE);
 
             let group = PlayerGroup::random();
             let group_id = group.group;

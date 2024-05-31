@@ -76,7 +76,6 @@ fn relevancy_system<G: RelevantGroup>(
     mut relevancy_map: ResMut<RelevancyMap<G>>
 ) {
     for (e, net_e, group) in query.iter() {
-        info!("add");
         relevancy_map.remove(e, *net_e);
         relevancy_map.insert(e, *net_e, *group);
     }

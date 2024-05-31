@@ -1,7 +1,7 @@
 use std::collections::{VecDeque, vec_deque::Iter};
 use bevy::prelude::*;
 use bevy_replicon::{
-    client::confirmed::Confirmed,
+    client::confirm_history::ConfirmHistory,
     server::server_tick::ServerTick, 
     prelude::*, 
 };
@@ -139,6 +139,11 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
 ) {
     let tick = server_tick.get();
     for FromClient { client_id, event } in events.read() {
+        if let Err(e) = event.validate() {
+            warn!("discarding: {e}");
+            continue;
+        }
+
         for (net_e, mut snaps) in query.iter_mut() {
             if net_e.client_id() != *client_id {
                 continue;
@@ -156,10 +161,15 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
 }
 
 fn client_populate_client_event_snapshots<E: NetworkEvent>(
-    mut query: Query<(&mut EventSnapshots<E>, &Confirmed)>,
+    mut query: Query<(&mut EventSnapshots<E>, &ConfirmHistory)>,
     mut events: EventReader<E>,
 ) {
     for event in events.read() {
+        if let Err(e) = event.validate() {
+            warn!("discarding: {e}");
+            continue;
+        }
+
         for (mut snaps, confirmed_tick) in query.iter_mut() {
             let tick = confirmed_tick.last_tick().get();
             match snaps.insert(event.clone(), tick) {

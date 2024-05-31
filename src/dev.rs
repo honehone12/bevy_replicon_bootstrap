@@ -4,6 +4,7 @@ pub mod game_client;
 pub mod game_server;
 
 use std::marker::PhantomData;
+use anyhow::bail;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::renet::transport::NetcodeTransportError;
@@ -32,6 +33,7 @@ impl Plugin for GameCommonPlugin {
         })
         .use_component_snapshot::<NetworkTranslation2D>()
         .use_component_snapshot::<NetworkAngle>()
+        .use_client_event_snapshot::<NetworkMovement2D>(ChannelKind::Unreliable)
         .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();
     }
@@ -100,6 +102,15 @@ impl NetworkEvent for NetworkFire {
     #[inline]
     fn timestamp(&self) -> f64 {
         self.timestamp
+    }
+
+    #[inline]
+    fn validate(&self) -> anyhow::Result<()> {
+        if !self.timestamp.is_finite() {
+            bail!("failed to validate timestamp")
+        }
+
+        Ok(())
     }
 }
 

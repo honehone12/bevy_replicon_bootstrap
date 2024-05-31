@@ -3,13 +3,10 @@ use bevy::{
     utils::SystemTime,
     input::mouse::MouseMotion 
 };
-use bevy_replicon::{
-    client::confirmed::Confirmed, 
-    prelude::*
-};
+use bevy_replicon::client::confirm_history::ConfirmHistory;
 use crate::{
     dev::{
-        config::DEV_MAX_SNAPSHOT_SIZE,
+        config::DEV_CLIENT_MAX_SNAPSHOT_SIZE,
         level::*, 
         *
     }, 
@@ -46,7 +43,6 @@ impl Plugin for GameClientPlugin {
             fire: MouseButton::Left
         })
         .add_event::<Action>()
-        .add_client_event::<NetworkMovement2D>(ChannelKind::Unreliable)
         .add_systems(Startup, (
             setup_light,
             setup_fixed_camera,
@@ -181,14 +177,15 @@ fn handle_player_spawned(
         &PlayerPresentation, 
         &NetworkTranslation2D, 
         &NetworkAngle,
-        &Confirmed
+        &ConfirmHistory
     ), 
         Added<NetworkEntity>
     >
 ) {
     for (e, net_e, presentation, net_trans, net_rot, confirmed_tick) in query.iter() {
         let tick = confirmed_tick.last_tick().get();
-        let mut trans_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+        let mut trans_snaps = ComponentSnapshots
+        ::with_capacity(DEV_CLIENT_MAX_SNAPSHOT_SIZE);
         match trans_snaps.insert(*net_trans, tick) {
             Ok(()) => (),
             Err(e) => {
@@ -196,7 +193,8 @@ fn handle_player_spawned(
                 return;
             }
         }
-        let mut rot_snaps = ComponentSnapshots::with_capacity(DEV_MAX_SNAPSHOT_SIZE); 
+        let mut rot_snaps = ComponentSnapshots
+        ::with_capacity(DEV_CLIENT_MAX_SNAPSHOT_SIZE); 
         match rot_snaps.insert(*net_rot, tick) {
             Ok(()) => (),
             Err(e) => {
@@ -204,6 +202,9 @@ fn handle_player_spawned(
                 return;
             }
         }
+
+        let movement_snaps = EventSnapshots::<NetworkMovement2D>
+        ::with_capacity(DEV_CLIENT_MAX_SNAPSHOT_SIZE);
 
         commands.entity(e)
         .insert((
@@ -218,7 +219,8 @@ fn handle_player_spawned(
                 ..default()
             },
             trans_snaps,
-            rot_snaps
+            rot_snaps,
+            movement_snaps
         ));
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);

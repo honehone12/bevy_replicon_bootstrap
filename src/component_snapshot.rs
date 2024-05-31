@@ -4,9 +4,8 @@ use bevy::{
     utils::SystemTime
 };
 use bevy_replicon::{
-    client::confirmed::Confirmed,
-    server::server_tick::ServerTick, 
-    prelude::* 
+    
+    client::confirm_history, prelude::*, server::server_tick::ServerTick 
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use anyhow::bail;
@@ -132,7 +131,7 @@ fn client_populate_component_snapshots<C: Component + Clone>(
     mut query: Query<( 
         &C, 
         &mut ComponentSnapshots<C>,
-        &Confirmed
+        &confirm_history::ConfirmHistory
     ), 
         Changed<C>
     >,
