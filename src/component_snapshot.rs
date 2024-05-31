@@ -65,19 +65,23 @@ impl<C: Component> ComponentSnapshots<C> {
             bail!("zero size deque");
         }
 
+        let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs_f64();
+
         if let Some(latest_snap) = self.latest_snapshot() {
             if tick < latest_snap.tick {
                 bail!("tick: {tick} is older than lated snapshot: {}", latest_snap.tick);
             }
+
+            debug_assert!(timestamp >= latest_snap.timestamp());
         }
 
         if self.deq.len() >= self.max_size {
             self.deq.pop_front();
         }
 
-        let timestamp = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)?
-        .as_secs_f64();
+        
         self.deq.push_back(ComponentSnapshot::new(component, timestamp, tick));
         Ok(())
     }

@@ -224,19 +224,19 @@ impl NetworkEvent for NetworkMovement2D {
     #[inline]
     fn validate(&self) -> anyhow::Result<()> {
         if !self.current_translation.is_finite() {
-            bail!("failed to validate current translation")
+            bail!("failed to validate current translation");
         }
         if !self.current_rotation.is_finite() {
-            bail!("failed to validate current rotation")
+            bail!("failed to validate current rotation");
         }
         if !self.linear_axis.is_finite() {
-            bail!("failed to validate linear axis")
+            bail!("failed to validate linear axis");
         }
         if !self.rotation_axis.is_finite() {
-            bail!("failed to validate rotation axis")
+            bail!("failed to validate rotation axis");
         }
         if !self.timestamp.is_finite() {
-            bail!("failed to validate timestamp")
+            bail!("failed to validate timestamp");
         }
 
         Ok(())
@@ -449,8 +449,10 @@ P: Resource {
 }
 
 fn update_transform_client_system<T, R, E, P>(
-    mut query: Query<&mut Transform, With<Owning>>,
-    mut movements: EventReader<E>,
+    mut query: Query<
+        (&mut Transform, &mut EventSnapshots<E>), 
+        With<Owning>
+    >,
     params: Res<P>,
     update: Res<NetworkTransformUpdate<T, R, E, P>>,
     axis: Res<TransformAxis>,
@@ -461,21 +463,21 @@ T: NetworkTranslation,
 R: NetworkRotation, 
 E: NetworkMovement, 
 P: Resource {
-    for movement in movements.read() {
-        if let Ok(mut transform) = query.get_single_mut() {
+    if let Ok((mut transform, mut movements)) = query.get_single_mut() {
+        for movement in movements.frontier() {
             let mut translation = T::from_vec3(transform.translation, axis.translation);        
             let mut rotation = R::from_quat(transform.rotation, axis.rotation);
             (update.update())(
                 &mut translation,
                 &mut rotation,
-                &movement,
+                movement.event(),
                 &params,
                 &fixed_time
             );
             transform.rotation = rotation.to_quat(axis.rotation);
             transform.translation = translation.to_vec3(axis.translation);
-        }       
-    }
+        }
+    } 
 }
 
 fn apply_network_transform_client_system<T, R>(

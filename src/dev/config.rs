@@ -12,8 +12,8 @@ pub const DEV_SERVER_MAX_CLIENTS: usize = 10;
 pub const DEV_CLIENT_TIME_OUT_SEC: i32 = 15;
 pub const DEV_TOKEN_EXPIRE_SEC: u64 = 300;
 
-pub const DEV_SERVER_MAX_SNAPSHOT_SIZE: usize = 2560;
-pub const DEV_CLIENT_MAX_SNAPSHOT_SIZE: usize = 64;
+pub const DEV_MAX_UPDATE_SNAPSHOT_SIZE: usize = 2560;
+pub const DEV_MAX_SNAPSHOT_SIZE: usize = 64;
 
 pub const BASE_SPEED: f32 = 10.0;
 pub const BASE_ANGULAR_SPEED: f32 = 25.0; 

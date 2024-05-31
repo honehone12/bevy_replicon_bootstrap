@@ -35,9 +35,12 @@ impl Plugin for GameCommonPlugin {
             channel_kind: ChannelKind::Unreliable,
             phantom: PhantomData::<NetworkMovement2D>
         })
+        .add_plugins(NetworkEventSnapshotPlugin{
+            channel_kind: ChannelKind::Ordered,
+            phantom: PhantomData::<NetworkFire>
+        })
         .add_plugins(ComponentSnapshotPlugin(PhantomData::<NetworkTranslation2D>))
         .add_plugins(ComponentSnapshotPlugin(PhantomData::<NetworkAngle>))
-        .add_client_event::<NetworkFire>(ChannelKind::Ordered)
         .replicate::<PlayerPresentation>();
     }
 }
@@ -110,7 +113,7 @@ impl NetworkEvent for NetworkFire {
     #[inline]
     fn validate(&self) -> anyhow::Result<()> {
         if !self.timestamp.is_finite() {
-            bail!("failed to validate timestamp")
+            bail!("failed to validate timestamp");
         }
 
         Ok(())

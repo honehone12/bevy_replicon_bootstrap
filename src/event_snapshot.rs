@@ -2,7 +2,10 @@ use std::{
     collections::{vec_deque::Iter, VecDeque}, 
     marker::PhantomData
 };
-use bevy::prelude::*;
+use bevy::{
+    utils::SystemTime,
+    prelude::*
+};
 use bevy_replicon::{
     client::confirm_history::ConfirmHistory,
     server::server_tick::ServerTick, 
@@ -13,14 +16,16 @@ use super::{network_entity::NetworkEntity, network_event::NetworkEvent};
 
 pub struct EventSnapshot<E: NetworkEvent> {
     event: E,
+    received_timestamp: f64,
     tick: u32
 }
 
 impl<E: NetworkEvent> EventSnapshot<E> {
     #[inline]
-    pub fn new(event: E, tick: u32) -> Self {
+    pub fn new(event: E, received_timestamp: f64, tick: u32) -> Self {
         Self{
             event,
+            received_timestamp,
             tick
         }
     }
@@ -33,6 +38,11 @@ impl<E: NetworkEvent> EventSnapshot<E> {
     #[inline]
     pub fn tick(&self) -> u32 {
         self.tick
+    }
+
+    #[inline]
+    pub fn received_timestamp(&self) -> f64 {
+        self.received_timestamp
     }
 
     #[inline]
@@ -100,10 +110,35 @@ impl<E: NetworkEvent> EventSnapshots<E> {
             bail!("zero size deque");
         }
 
+        let received_timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs_f64();
+
+        if event.timestamp() >= received_timestamp {
+            bail!(
+                "timestamp: {} is older than now: {}",
+                event.timestamp(),
+                received_timestamp
+            );
+        }
+
         if let Some(latest_snap) = self.latest_snapshot() {
             if tick < latest_snap.tick {
-                bail!("tick: {tick} is older than latest snapshot: {}", latest_snap.tick);
+                bail!(
+                    "tick: {tick} is older than latest snapshot: {}", 
+                    latest_snap.tick
+                );
             }
+
+            if event.timestamp() <= latest_snap.timestamp() {
+                bail!(
+                    "timestamp: {} is older than latest: {}",
+                    event.timestamp(),
+                    latest_snap.timestamp(),
+                );
+            }
+
+            debug_assert!(received_timestamp >= latest_snap.received_timestamp());
         }
 
         if event.index() < self.frontier_index {
@@ -117,7 +152,7 @@ impl<E: NetworkEvent> EventSnapshots<E> {
             self.deq.pop_front();
         }
 
-        self.deq.push_back(EventSnapshot::new(event, tick));
+        self.deq.push_back(EventSnapshot::new(event, received_timestamp, tick));
         Ok(())
     }
 

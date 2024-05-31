@@ -79,12 +79,13 @@ fn handle_player_entity_event(
     for e in events.read() {
         if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
+            
             let trans_bundle = match NetworkTranslationBundle
             ::<NetworkTranslation2D>::new(
                 default(),
                 TranslationAxis::XZ, 
                 tick, 
-                DEV_SERVER_MAX_SNAPSHOT_SIZE
+                DEV_MAX_UPDATE_SNAPSHOT_SIZE
             ) {
                 Ok(b) => b,
                 Err(e) => {
@@ -92,12 +93,13 @@ fn handle_player_entity_event(
                     return;
                 }
             };
+            
             let rot_bundle = match NetworkRotationBundle
             ::<NetworkAngle>::new(
                 default(), 
                 RotationAxis::Z,
                 tick, 
-                DEV_SERVER_MAX_SNAPSHOT_SIZE
+                DEV_MAX_UPDATE_SNAPSHOT_SIZE
             ) {
                 Ok(b) => b,
                 Err(e) => {
@@ -107,7 +109,10 @@ fn handle_player_entity_event(
             };
 
             let movement_snaps = EventSnapshots::<NetworkMovement2D>
-            ::with_capacity(DEV_SERVER_MAX_SNAPSHOT_SIZE);
+            ::with_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE);
+
+            let fire_snaps = EventSnapshots::<NetworkFire>
+            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
 
             let group = PlayerGroup::random();
             let group_id = group.group;
@@ -118,7 +123,8 @@ fn handle_player_entity_event(
                 group,
                 trans_bundle,
                 rot_bundle,
-                movement_snaps
+                movement_snaps,
+                fire_snaps
             ));
 
             info!("player: {client_id:?} spawned for group: {group_id}");
@@ -134,6 +140,13 @@ fn handle_fire(
     mut events: EventReader<FromClient<NetworkFire>>
 ) {
     for FromClient { client_id, event } in events.read() {
+        // event snapshots break order of events.
+        // some pvp kind of games have to validate manually.
+        if let Err(e) = event.validate() {
+            warn!("discarding: {e}");
+            continue;
+        }
+
         info!(
             "player: {:?} fired at {}",
             client_id, event.timestamp() 
