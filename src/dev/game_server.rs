@@ -133,54 +133,47 @@ fn handle_player_entity_event(
 }
 
 fn handle_fire(
-    query: Query<(
-        &NetworkEntity,
-        &ComponentSnapshots<NetworkTranslation2D>
-    )>,
-    mut events: EventReader<FromClient<NetworkFire>>
+    mut shooters: Query<(&NetworkEntity, &mut EventSnapshots<NetworkFire>)>,
+    query: Query<(&NetworkEntity, &ComponentSnapshots<NetworkTranslation2D>)>,
 ) {
-    for FromClient { client_id, event } in events.read() {
-        // event snapshots break order of events.
-        // some pvp kind of games have to validate manually.
-        if let Err(e) = event.validate() {
-            warn!("discarding: {e}");
-            continue;
-        }
-
-        info!(
-            "player: {:?} fired at {}",
-            client_id, event.timestamp() 
-        );
-
-        for (net_e, snaps) in query.iter() {
-            let is_shooter = net_e.client_id() == *client_id;
-
-            let index = match snaps.iter().rposition(
-                |s| s.timestamp() <= event.timestamp()
-            ) {
-                Some(idx) => idx,
-                None => {
-                    if cfg!(debug_assertions) {
-                        panic!(
-                            "could not find timestamp smaller than {}",
-                            event.timestamp()
-                        );
-                    } else {
-                        warn!(
-                            "could not find timestamp smaller than {}, skipping",
-                            event.timestamp()
-                        );
-                        continue;
-                    }
-                }
-            };
-
-            // get by found index
-            let snap = snaps.get(index).unwrap();
+    for (shooter, mut fire_snaps) in shooters.iter_mut() {
+        for event in fire_snaps.frontier() {
             info!(
-                "found latest snap: shooter: {}, index: {}, timestamp: {}, translation: {}",
-                is_shooter, index, snap.timestamp(), snap.component().0
+                "player: {:?} fired at {}",
+                shooter.client_id(), 
+                event.timestamp() 
             );
+    
+            for (net_e, snaps) in query.iter() {
+                let is_shooter = net_e.client_id() == shooter.client_id();
+    
+                let index = match snaps.iter().rposition(
+                    |s| s.timestamp() <= event.timestamp()
+                ) {
+                    Some(idx) => idx,
+                    None => {
+                        if cfg!(debug_assertions) {
+                            panic!(
+                                "could not find timestamp smaller than {}",
+                                event.timestamp()
+                            );
+                        } else {
+                            warn!(
+                                "could not find timestamp smaller than {}, skipping",
+                                event.timestamp()
+                            );
+                            continue;
+                        }
+                    }
+                };
+    
+                // get by found index
+                let snap = snaps.get(index).unwrap();
+                info!(
+                    "found latest snap: shooter: {}, index: {}, timestamp: {}, translation: {}",
+                    is_shooter, index, snap.timestamp(), snap.component().0
+                );
+            }
         }
     }
 }

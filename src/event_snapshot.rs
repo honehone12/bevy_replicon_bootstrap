@@ -94,8 +94,9 @@ impl<E: NetworkEvent> EventSnapshots<E> {
     }
 
     #[inline]
-    pub fn sort_with_index(&mut self) {
-        self.deq.make_contiguous().sort_by_key(|s| s.index());
+    pub fn sort_by_index(&mut self) {
+        self.deq.make_contiguous()
+        .sort_by_key(|s| s.index());
     }
 
     #[inline]
@@ -114,13 +115,16 @@ impl<E: NetworkEvent> EventSnapshots<E> {
         .duration_since(SystemTime::UNIX_EPOCH)?
         .as_secs_f64();
 
-        if event.timestamp() >= received_timestamp {
-            bail!(
-                "timestamp: {} is older than now: {}",
-                event.timestamp(),
-                received_timestamp
-            );
-        }
+        // we did comment out this check because
+        // too stric timestamp check can be stressful experience for players.
+        //
+        // if event.timestamp() >= received_timestamp { 
+        //     bail!(
+        //         "timestamp: {} is older than now: {}",
+        //         event.timestamp(),
+        //         received_timestamp
+        //     );
+        // }
 
         if let Some(latest_snap) = self.latest_snapshot() {
             if tick < latest_snap.tick {

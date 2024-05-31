@@ -329,7 +329,7 @@ P: Resource {
         mut net_rot, rot_snaps, mut rot_pred_err, 
         mut movements
     ) in query.iter_mut() {  
-        movements.sort_with_index();
+        movements.sort_by_index();
         let mut frontier = movements.frontier();
         if frontier.len() == 0 {
             continue;
