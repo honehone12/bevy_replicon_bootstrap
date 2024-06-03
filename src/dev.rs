@@ -130,7 +130,10 @@ fn update_transform(
     if movement.rotation_axis != Vec2::ZERO {
         let mut angle = movement.rotation_axis.x;
         angle *= params.base_angular_speed * time.delta_seconds();
-        rotation.0 = ((rotation.0 - angle) + 360.0) % 360.0;
+        rotation.0 = (rotation.0 - angle) % 360.0;
+        if rotation.0 < 0.0 {
+            rotation.0 += 360.0;
+        }
     }
 
     if movement.linear_axis != Vec2::ZERO {
