@@ -338,44 +338,44 @@ P: Resource {
         mut net_trans, trans_snaps, mut trans_pred_err,
         mut net_rot, rot_snaps, mut rot_pred_err, 
         mut movements
-    ) in query.iter_mut() {  
-        movements.sort_by_index();
-        let mut frontier = movements.frontier();
-        if frontier.len() == 0 {
+    ) in query.iter_mut() {
+        if movements.frontier_index() == 0 {
             continue;
         }
 
+        movements.sort_by_index();
+        
         // frontier is not empty
-        let first = frontier.next()
+        let first = movements.frontier_snapshot()
         .unwrap()
         .event();
-        let frontier_time = first.timestamp();
+        let first_timestamp = first.timestamp();
 
         let trans_idx = match trans_snaps.iter()
-        .rposition(|s| s.timestamp() <= frontier_time) {
+        .rposition(|s| s.timestamp() <= first_timestamp) {
             Some(idx) => idx,
             None => {
                 if cfg!(debug_assertions) {
-                    panic!("could not find snapshot for timestamp: {frontier_time}");
+                    panic!("could not find snapshot for timestamp: {first_timestamp}");
                 } else {
                     error!(
                         "could not find snapshot for timestamp: {}, skipping update",
-                        frontier_time
+                        first_timestamp
                     );
                     continue;
                 }
             }
         };
         let rot_idx = match rot_snaps.iter()
-        .rposition(|s| s.timestamp() <= frontier_time) {
+        .rposition(|s| s.timestamp() <= first_timestamp) {
             Some(idx) => idx,
             None => {
                 if cfg!(debug_assertions) {
-                    panic!("could not find snapshot for timestamp: {frontier_time}");
+                    panic!("could not find snapshot for timestamp: {first_timestamp}");
                 } else {
                     error!(
                         "could not find snapshot for timestamp: {}, skipping update",
-                        frontier_time
+                        first_timestamp
                     );
                     continue;
                 }
@@ -434,15 +434,8 @@ P: Resource {
         
         let mut translation = net_trans.clone();
         let mut rotation = net_rot.clone();
-        (update.update())(
-            &mut translation,
-            &mut rotation, 
-            &first,
-            &params, 
-            &fixed_time
-        );
-
-        while let Some(snap) = frontier.next() {
+        for snap in movements.frontier_ref()
+        .iter() {
             let e = snap.event();
             (update.update())(
                 &mut translation,
@@ -452,6 +445,8 @@ P: Resource {
                 &fixed_time
             );
         }
+
+        movements.cache();
 
         *net_rot = rotation;
         *net_trans = translation;
@@ -474,7 +469,8 @@ R: NetworkRotation,
 E: NetworkMovement, 
 P: Resource {
     if let Ok((mut transform, mut movements)) = query.get_single_mut() {
-        for movement in movements.frontier() {
+        for movement in movements.frontier_ref()
+        .iter() {
             let mut translation = T::from_vec3(transform.translation, axis.translation);        
             let mut rotation = R::from_quat(transform.rotation, axis.rotation);
             (update.update())(
@@ -487,14 +483,16 @@ P: Resource {
             transform.rotation = rotation.to_quat(axis.rotation);
             transform.translation = translation.to_vec3(axis.translation);
         }
+
+        movements.cache();
     } 
 }
 
 fn apply_network_transform_client_system<T, R>(
     mut query: Query<(
         &mut Transform,
-        &T, &ComponentSnapshots<T>,
-        &R, &ComponentSnapshots<R>,
+        &T, &mut ComponentSnapshots<T>,
+        &R, &mut ComponentSnapshots<R>,
     ), Without<Owning>>,
     axis: Res<TransformAxis>,
     config: Res<InterpolationConfig>
@@ -504,12 +502,13 @@ T: NetworkTranslation + LinearInterpolatable,
 R: NetworkRotation + LinearInterpolatable {
     for (
         mut transform, 
-        net_translation, translation_snaps,
-        net_rotation, rotation_snaps
+        net_translation, mut translation_snaps,
+        net_rotation, mut rotation_snaps
     ) in query.iter_mut() {
+        rotation_snaps.sort_with_tick();
         match linear_interpolate(
             net_rotation, 
-            rotation_snaps, 
+            &rotation_snaps, 
             config.network_tick_delta
         ) {
             Ok(r) => transform.rotation = r.to_quat(axis.rotation),
@@ -523,9 +522,10 @@ R: NetworkRotation + LinearInterpolatable {
             }
         };
         
+        translation_snaps.sort_with_tick();
         match linear_interpolate(
             net_translation, 
-            translation_snaps, 
+            &translation_snaps, 
             config.network_tick_delta
         ) {
             Ok(t) => transform.translation = t.to_vec3(axis.translation),

@@ -58,7 +58,6 @@ impl<C: Component> ComponentSnapshots<C> {
         }
     }
 
-    #[inline]
     pub fn insert(&mut self, component: C, tick: u32) 
     -> anyhow::Result<()> {
         if self.max_size == 0 {
@@ -82,7 +81,11 @@ impl<C: Component> ComponentSnapshots<C> {
         }
 
         
-        self.deq.push_back(ComponentSnapshot::new(component, timestamp, tick));
+        self.deq.push_back(ComponentSnapshot::new(
+            component, 
+            timestamp, 
+            tick
+        ));
         Ok(())
     }
 
@@ -103,7 +106,8 @@ impl<C: Component> ComponentSnapshots<C> {
 
     #[inline]
     pub fn sort_with_tick(&mut self) {
-        self.deq.make_contiguous().sort_by_key(|s| s.tick);
+        self.deq.make_contiguous()
+        .sort_by_key(|s| s.tick);
     }
 
     #[inline]

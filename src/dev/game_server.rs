@@ -109,10 +109,10 @@ fn handle_player_entity_event(
             };
 
             let movement_snaps = EventSnapshots::<NetworkMovement2D>
-            ::with_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE);
+            ::with_cache_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE);
 
             let fire_snaps = EventSnapshots::<NetworkFire>
-            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+            ::with_cache_capacity(DEV_MAX_SNAPSHOT_SIZE);
 
             let group = PlayerGroup::random();
             let group_id = group.group;
@@ -133,34 +133,40 @@ fn handle_player_entity_event(
 }
 
 fn handle_fire(
-    mut shooters: Query<(&NetworkEntity, &mut EventSnapshots<NetworkFire>)>,
-    query: Query<(&NetworkEntity, &ComponentSnapshots<NetworkTranslation2D>)>,
+    mut shooters: Query<(
+        &NetworkEntity, 
+        &mut EventSnapshots<NetworkFire>
+    )>,
+    query: Query<(
+        &NetworkEntity, 
+        &ComponentSnapshots<NetworkTranslation2D>
+    )>,
 ) {
     for (shooter, mut fire_snaps) in shooters.iter_mut() {
-        for event in fire_snaps.frontier() {
+        for fire in fire_snaps.frontier_ref() {
             info!(
                 "player: {:?} fired at {}",
                 shooter.client_id(), 
-                event.timestamp() 
+                fire.timestamp() 
             );
     
             for (net_e, snaps) in query.iter() {
                 let is_shooter = net_e.client_id() == shooter.client_id();
     
                 let index = match snaps.iter().rposition(
-                    |s| s.timestamp() <= event.timestamp()
+                    |s| s.timestamp() <= fire.timestamp()
                 ) {
                     Some(idx) => idx,
                     None => {
                         if cfg!(debug_assertions) {
                             panic!(
                                 "could not find timestamp smaller than {}",
-                                event.timestamp()
+                                fire.timestamp()
                             );
                         } else {
                             warn!(
                                 "could not find timestamp smaller than {}, skipping",
-                                event.timestamp()
+                                fire.timestamp()
                             );
                             continue;
                         }
@@ -175,5 +181,7 @@ fn handle_fire(
                 );
             }
         }
+
+        fire_snaps.cache();
     }
 }

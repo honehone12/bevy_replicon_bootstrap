@@ -1,7 +1,4 @@
-use std::{
-    collections::{vec_deque::Iter, VecDeque}, 
-    marker::PhantomData
-};
+use std::marker::PhantomData;
 use bevy::{
     utils::SystemTime,
     prelude::*
@@ -58,73 +55,71 @@ impl<E: NetworkEvent> EventSnapshot<E> {
 
 #[derive(Component)]
 pub struct EventSnapshots<E: NetworkEvent> {
-    deq: VecDeque<EventSnapshot<E>>,
-    max_size: usize,
-    frontier_index: usize
+    frontier: Vec<EventSnapshot<E>>,
+    frontier_index: usize,
+    cache: Vec<EventSnapshot<E>>,
+    cache_size: usize,
 }
 
 impl<E: NetworkEvent> EventSnapshots<E> {
     #[inline]
-    pub fn with_capacity(max_size: usize) -> Self {
+    pub fn with_cache_capacity(cache_size: usize) -> Self {
         Self { 
-            deq: VecDeque::with_capacity(max_size), 
+            frontier: Vec::new(),
             frontier_index: 0,
-            max_size 
+            cache: Vec::with_capacity(cache_size),
+            cache_size
         }
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
-        self.deq.len()
+    pub fn frontier_len(&self) -> usize {
+        self.frontier.len()
+    }
+
+    #[inline]
+    pub fn cache_len(&self) -> usize {
+        self.cache.len()
     }
 
     #[inline]
     pub fn latest_snapshot(&self) -> Option<&EventSnapshot<E>> {
-        self.deq.back()
+        if self.frontier_len() == 0 {
+            return None;
+        }
+        self.frontier.get(self.frontier_len() - 1)
     }
 
     #[inline]
-    pub fn get(&self, index: usize) -> Option<&EventSnapshot<E>> {
-        self.deq.get(index)
+    pub fn frontier_snapshot(&self) -> Option<&EventSnapshot<E>> {
+        self.frontier.get(0)
     }
 
     #[inline]
-    pub fn iter(&self) -> Iter<'_, EventSnapshot<E>> {
-        self.deq.iter()
+    pub fn frontier_index(&self) -> usize {
+        self.frontier_index
     }
 
     #[inline]
-    pub fn sort_by_index(&mut self) {
-        self.deq.make_contiguous()
-        .sort_by_key(|s| s.index());
+    pub fn frontier_ref(&self) -> &Vec<EventSnapshot<E>> {
+        &self.frontier
     }
 
     #[inline]
-    pub fn pop_front(&mut self) {
-        self.deq.pop_front();
+    pub fn cache_ref(&self) -> &Vec<EventSnapshot<E>> {
+        &self.cache
     }
 
-    #[inline]
     pub fn insert(&mut self, event: E, tick: u32)
     -> anyhow::Result<()> {
-        if self.max_size == 0 {
-            bail!("zero size deque");
+        if self.cache_size > 0 
+        && self.frontier_len() > self.cache_size {
+            warn!("are you missing to call cache() ?");
         }
 
         let received_timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)?
         .as_secs_f64();
-
-        // we did comment out this check because
-        // too stric timestamp check can be stressful experience for players.
-        //
-        // if event.timestamp() >= received_timestamp { 
-        //     bail!(
-        //         "timestamp: {} is older than now: {}",
-        //         event.timestamp(),
-        //         received_timestamp
-        //     );
-        // }
 
         if let Some(latest_snap) = self.latest_snapshot() {
             if tick < latest_snap.tick {
@@ -152,25 +147,55 @@ impl<E: NetworkEvent> EventSnapshots<E> {
             );
         } 
 
-        if self.deq.len() >= self.max_size {
-            self.deq.pop_front();
-        }
-
-        self.deq.push_back(EventSnapshot::new(event, received_timestamp, tick));
+        self.frontier.push(EventSnapshot::new(
+            event, 
+            received_timestamp, 
+            tick
+        ));
         Ok(())
     }
 
     #[inline]
-    pub fn frontier(&mut self) -> Iter<'_, EventSnapshot<E>> {
-        if let Some(begin) = self.deq.iter().position(
-            |e| e.index() >= self.frontier_index
-        ) {
-            // buffer is not empty here
-            self.frontier_index = self.deq.back().unwrap().index() + 1;
-            self.deq.range(begin..)
-        } else {
-            self.deq.range(0..0)
+    pub fn sort_by_index(&mut self) {
+        if self.frontier_len() == 0 {
+            return;
         }
+
+        self.frontier
+        .sort_by_key(|s| s.index());
+    }
+
+    pub fn cache(&mut self) {
+        let mut frontier_size = self.frontier_len();
+        if frontier_size == 0 {
+            return;
+        } 
+        
+        if self.cache_size == 0 {
+            self.frontier.clear();
+            return;
+        } 
+
+        if frontier_size > self.cache_size {
+            let uncacheable = self.cache_size - frontier_size;
+            _ = self.frontier.drain(..uncacheable);
+            frontier_size = self.frontier_len();
+        }
+        
+        if self.cache_len() + frontier_size > self.cache_size {
+            _ = self.cache.drain(..frontier_size);
+        }
+
+        // frontier is not empty
+        let latest_idx = self.latest_snapshot()
+        .unwrap()
+        .index(); 
+        let drain = self.frontier.drain(..);
+        self.cache.append(&mut drain.collect());
+        self.frontier_index = latest_idx + 1;
+
+        debug_assert!(self.frontier_len() == 0);
+        debug_assert!(self.cache_len() <= self.cache_size);
     }
 }
 
@@ -192,10 +217,7 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
             }
 
             match snaps.insert(event.clone(), tick) {
-                Ok(()) => debug!(
-                    "inserted event snapshot at tick: {} len: {}", 
-                    tick, snaps.len()
-                ),
+                Ok(()) => (),
                 Err(e) => warn!("discarding: {e}")
             }
         }
@@ -215,10 +237,7 @@ fn client_populate_client_event_snapshots<E: NetworkEvent>(
         for (mut snaps, confirmed_tick) in query.iter_mut() {
             let tick = confirmed_tick.last_tick().get();
             match snaps.insert(event.clone(), tick) {
-                Ok(()) => debug!(
-                    "inserted event snapshot at tick: {} len: {}", 
-                    tick, snaps.len()
-                ),
+                Ok(()) => (),
                 Err(e) => warn!("discarding: {e}")
             }
         }
