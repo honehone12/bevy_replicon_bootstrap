@@ -214,7 +214,7 @@ fn handle_player_spawned(
         commands.entity(e)
         .insert((
             PbrBundle{
-                mesh: meshes.add(Mesh::from(Capsule3d::default())),
+                mesh: meshes.add(Mesh::from(Cuboid::default())),
                 material: materials.add(presentation.color),
                 transform: Transform{
                     translation: net_trans.to_vec3(TranslationAxis::XZ),

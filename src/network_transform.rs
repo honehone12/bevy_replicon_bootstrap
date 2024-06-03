@@ -112,7 +112,16 @@ pub struct NetworkAngle(pub f32);
 impl LinearInterpolatable for NetworkAngle {
     #[inline]
     fn linear_interpolate(&self, rhs: &Self, t: f32) -> Self {
-        Self(self.0.lerp(rhs.0, t))
+        let mut delta = (rhs.0 - self.0) % 360.0;
+
+        if delta < -180.0 {
+            delta += 360.0;
+        } else if delta > 180.0 {
+            delta -= 360.0;
+        }
+
+        delta *= t;
+        Self((self.0 + delta) % 360.0)
     }
 }
 
