@@ -109,10 +109,10 @@ fn handle_player_entity_event(
             };
 
             let movement_snaps = EventSnapshots::<NetworkMovement2D>
-            ::with_cache_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE);
+            ::with_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE);
 
             let fire_snaps = EventSnapshots::<NetworkFire>
-            ::with_cache_capacity(DEV_MAX_SNAPSHOT_SIZE);
+            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
 
             let group = PlayerGroup::random();
             let group_id = group.group;

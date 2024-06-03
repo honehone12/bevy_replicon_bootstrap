@@ -63,7 +63,7 @@ pub struct EventSnapshots<E: NetworkEvent> {
 
 impl<E: NetworkEvent> EventSnapshots<E> {
     #[inline]
-    pub fn with_cache_capacity(cache_size: usize) -> Self {
+    pub fn with_capacity(cache_size: usize) -> Self {
         Self { 
             frontier: Vec::new(),
             frontier_index: 0,
@@ -121,23 +121,23 @@ impl<E: NetworkEvent> EventSnapshots<E> {
         .duration_since(SystemTime::UNIX_EPOCH)?
         .as_secs_f64();
 
-        if let Some(latest_snap) = self.latest_snapshot() {
-            if tick < latest_snap.tick {
+        if let Some(frontier_snap) = self.frontier_snapshot() {
+            if tick < frontier_snap.tick {
                 bail!(
-                    "tick: {tick} is older than latest snapshot: {}", 
-                    latest_snap.tick
+                    "tick: {tick} is older than frontier snapshot: {}", 
+                    frontier_snap.tick
                 );
             }
 
-            if event.timestamp() <= latest_snap.timestamp() {
+            if event.timestamp() <= frontier_snap.timestamp() {
                 bail!(
                     "timestamp: {} is older than latest: {}",
                     event.timestamp(),
-                    latest_snap.timestamp(),
+                    frontier_snap.timestamp(),
                 );
             }
 
-            debug_assert!(received_timestamp >= latest_snap.received_timestamp());
+            debug_assert!(received_timestamp >= frontier_snap.received_timestamp());
         }
 
         if event.index() < self.frontier_index {
@@ -152,6 +152,9 @@ impl<E: NetworkEvent> EventSnapshots<E> {
             received_timestamp, 
             tick
         ));
+
+        info!("frontier size: {}", self.frontier_len());
+
         Ok(())
     }
 
@@ -220,6 +223,7 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
                 Ok(()) => (),
                 Err(e) => warn!("discarding: {e}")
             }
+            break;
         }
     }
 }
@@ -240,6 +244,7 @@ fn client_populate_client_event_snapshots<E: NetworkEvent>(
                 Ok(()) => (),
                 Err(e) => warn!("discarding: {e}")
             }
+            break;
         }
     }
 }

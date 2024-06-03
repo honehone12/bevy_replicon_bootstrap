@@ -206,10 +206,10 @@ fn handle_player_spawned(
         }
 
         let movement_snaps = EventSnapshots::<NetworkMovement2D>
-        ::with_cache_capacity(DEV_MAX_SNAPSHOT_SIZE);
+        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
 
         let fire_snaps = EventSnapshots::<NetworkFire>
-        ::with_cache_capacity(DEV_MAX_SNAPSHOT_SIZE);
+        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
 
         commands.entity(e)
         .insert((

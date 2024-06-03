@@ -132,6 +132,7 @@ fn server_populate_component_snapshots<C: Component + Clone>(
             ),
             Err(e) => warn!("discarding: {e}") 
         }
+        break;
     }
 }
 
@@ -153,6 +154,7 @@ fn client_populate_component_snapshots<C: Component + Clone>(
             ),
             Err(e) => warn!("discarding: {e}")
         }
+        break;
     }
 }
 

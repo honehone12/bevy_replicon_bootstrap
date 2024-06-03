@@ -339,7 +339,7 @@ P: Resource {
         mut net_rot, rot_snaps, mut rot_pred_err, 
         mut movements
     ) in query.iter_mut() {
-        if movements.frontier_index() == 0 {
+        if movements.frontier_len() == 0 {
             continue;
         }
 
@@ -436,11 +436,10 @@ P: Resource {
         let mut rotation = net_rot.clone();
         for snap in movements.frontier_ref()
         .iter() {
-            let e = snap.event();
             (update.update())(
                 &mut translation,
                 &mut rotation, 
-                &e,
+                &snap.event(),
                 &params, 
                 &fixed_time
             );
