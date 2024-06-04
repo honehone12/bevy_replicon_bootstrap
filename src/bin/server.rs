@@ -4,7 +4,7 @@ use std::{
 };
 use bevy::{
     app::ScheduleRunnerPlugin, 
-    log::LogPlugin, 
+    log::{Level, LogPlugin}, 
     prelude::*
 };
 use bevy_replicon_action::{
@@ -29,7 +29,10 @@ fn main() {
         MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(
             Duration::from_secs_f32(DEV_SERVER_TICK_DELTA)
         )),
-        LogPlugin::default()
+        LogPlugin{
+            level: Level::INFO,
+            ..default()
+        }
     ))
     .add_plugins(builder.build_replicon())
     .add_plugins(GameServerPlugin);

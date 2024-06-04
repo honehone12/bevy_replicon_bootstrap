@@ -153,8 +153,10 @@ fn handle_fire(
             for (net_e, snaps) in query.iter() {
                 let is_shooter = net_e.client_id() == shooter.client_id();
     
-                let index = match snaps.iter().rposition(
-                    |s| s.timestamp() <= fire.timestamp()
+                let cache = snaps.cache_ref();
+                let index = match cache.iter()
+                .rposition(|s| 
+                    s.timestamp() <= fire.timestamp()
                 ) {
                     Some(idx) => idx,
                     None => {
@@ -174,10 +176,13 @@ fn handle_fire(
                 };
     
                 // get by found index
-                let snap = snaps.get(index).unwrap();
+                let snap = cache.get(index).unwrap();
                 info!(
                     "found latest snap: shooter: {}, index: {}, timestamp: {}, translation: {}",
-                    is_shooter, index, snap.timestamp(), snap.component().0
+                    is_shooter, 
+                    index, 
+                    snap.timestamp(), 
+                    snap.component().0
                 );
             }
         }

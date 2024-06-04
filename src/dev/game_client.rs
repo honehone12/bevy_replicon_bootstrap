@@ -180,10 +180,18 @@ fn handle_player_spawned(
         &ConfirmHistory
     ), 
         Added<NetworkEntity>
-    >
+    >,
+    client: Res<Client>
 ) {
-    for (e, net_e, presentation, net_trans, net_rot, confirmed_tick) in query.iter() {
-        let tick = confirmed_tick.last_tick().get();
+    for (
+        e, net_e, 
+        presentation, 
+        net_trans, 
+        net_rot, 
+        confirmed_tick
+    ) in query.iter() {
+        let tick = confirmed_tick.last_tick()
+        .get();
         
         let mut trans_snaps = ComponentSnapshots
         ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
@@ -205,12 +213,6 @@ fn handle_player_spawned(
             }
         }
 
-        let movement_snaps = EventSnapshots::<NetworkMovement2D>
-        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-
-        let fire_snaps = EventSnapshots::<NetworkFire>
-        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-
         commands.entity(e)
         .insert((
             PbrBundle{
@@ -224,10 +226,22 @@ fn handle_player_spawned(
                 ..default()
             },
             trans_snaps,
-            rot_snaps,
-            movement_snaps,
-            fire_snaps
+            rot_snaps
         ));
+
+        if net_e.client_id()
+        .get() == client.id() {
+            let movement_snaps = EventSnapshots::<NetworkMovement2D>
+            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+            let fire_snaps = EventSnapshots::<NetworkFire>
+            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
+            
+            commands.entity(e)
+            .insert((
+                movement_snaps,
+                fire_snaps
+            ));
+        }
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
     } 

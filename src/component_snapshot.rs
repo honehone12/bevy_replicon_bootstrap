@@ -1,4 +1,4 @@
-use std::{collections::{vec_deque::Iter, VecDeque}, marker::PhantomData};
+use std::marker::PhantomData;
 use bevy::{
     prelude::*,
     utils::SystemTime
@@ -45,74 +45,177 @@ impl<C: Component> ComponentSnapshot<C> {
 
 #[derive(Component, Deserialize, Serialize)]
 pub struct ComponentSnapshots<C: Component> {
-    deq: VecDeque<ComponentSnapshot<C>>,
-    max_size: usize
+    frontier: Vec<ComponentSnapshot<C>>,
+    cache: Vec<ComponentSnapshot<C>>,
+    cache_size: usize
 }
 
 impl<C: Component> ComponentSnapshots<C> {
     #[inline]
-    pub fn with_capacity(max_size: usize) -> Self {
+    pub fn with_capacity(cache_size: usize) -> Self {
         Self{
-            deq: VecDeque::with_capacity(max_size),
-            max_size
+            frontier: Vec::new(),
+            cache: Vec::with_capacity(cache_size),
+            cache_size
         }
+    }
+
+    #[inline]
+    pub fn frontier_len(&self) -> usize {
+        self.frontier.len()
+    }
+
+    #[inline]
+    pub fn cache_len(&self) -> usize {
+        self.cache.len()
+    }
+
+    #[inline]
+    pub fn frontier_back(&self) -> Option<&ComponentSnapshot<C>> {
+        let len = self.frontier_len();
+        if len == 0 {
+            return None;
+        }
+
+        self.frontier.get(len - 1)
+    }
+
+    #[inline]
+    pub fn frontier_front(&self) -> Option<&ComponentSnapshot<C>> {
+        self.frontier.get(0)
+    }
+
+    #[inline]
+    pub fn frontier_ref(&self) -> &Vec<ComponentSnapshot<C>> {
+        &self.frontier
+    }
+
+    #[inline]
+    pub fn cache_ref(&self) -> &Vec<ComponentSnapshot<C>> {
+        &self.cache
     }
 
     pub fn insert(&mut self, component: C, tick: u32) 
     -> anyhow::Result<()> {
-        if self.max_size == 0 {
-            bail!("zero size deque");
+        if self.cache_size > 0
+        && self.frontier_len() > self.cache_size {
+            warn!(
+                "frontier len: {}, call cache() after frontier_ref()",
+                self.frontier_len()
+            );
         }
 
         let timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)?
         .as_secs_f64();
 
-        if let Some(latest_snap) = self.latest_snapshot() {
-            if tick < latest_snap.tick {
-                bail!("tick: {tick} is older than lated snapshot: {}", latest_snap.tick);
+        if let Some(frontier_snap) = self.frontier_front() {
+            if tick < frontier_snap.tick {
+                bail!(
+                    "tick: {tick} is older than frontier snapshot: {}", 
+                    frontier_snap.tick
+                );
             }
 
-            debug_assert!(timestamp >= latest_snap.timestamp());
+            debug_assert!(timestamp >= frontier_snap.timestamp());
         }
-
-        if self.deq.len() >= self.max_size {
-            self.deq.pop_front();
-        }
-
         
-        self.deq.push_back(ComponentSnapshot::new(
+        self.frontier.push(ComponentSnapshot::new(
             component, 
             timestamp, 
             tick
         ));
+
+        debug!(
+            "inserted component snapshot: frontier len: {}, cache len: {}",
+            self.frontier_len(),
+            self.cache_len()
+        );
+
         Ok(())
     }
 
     #[inline]
-    pub fn latest_snapshot(&self) -> Option<&ComponentSnapshot<C>> {
-        self.deq.back()
+    pub fn sort_frontier_by_timestamp(&mut self) {
+        if self.frontier_len() == 0 {
+            return;
+        }
+
+        self.frontier
+        .sort_unstable_by(|l, r| 
+            // timestamp is always stamped in insert()
+            // that returns error on bad result
+            l.timestamp()
+            .partial_cmp(&r.timestamp())
+            .expect("timestamp is Nan")
+        );
     }
 
-    #[inline]
-    pub fn get(&self, index: usize) -> Option<&ComponentSnapshot<C>> {
-        self.deq.get(index)
+    pub fn cache_n(&mut self, n: usize) {
+        if n == 0 {
+            return;
+        }
+
+        let frontier_len = self.frontier_len();
+        if frontier_len < n {
+            return;
+        }
+
+        if self.cache_size == 0 {
+            self.frontier.drain(..n);
+            return;
+        }
+
+        if n > self.cache_size {
+            self.cache.clear();
+            let uncacheable = n - self.cache_size;
+            self.frontier.drain(..uncacheable);
+            let drain = self.frontier.drain(..self.cache_size);
+            self.cache.append(&mut drain.collect());
+
+            debug_assert!(self.frontier_len() == frontier_len - n);
+            debug_assert!(self.cache_len() == self.cache_size);
+            return;
+        }
+
+        if self.cache_len() + n > self.cache_size {
+            self.cache.drain(..n);
+        }
+
+        let drain = self.frontier.drain(..n);
+        self.cache.append(&mut drain.collect());
+
+        debug_assert!(self.frontier_len() == frontier_len - n);
+        debug_assert!(self.cache_len() <= self.cache_size);
     }
 
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.deq.len()
-    }
+    pub fn cache(&mut self) {
+        let mut frontier_len = self.frontier_len();
+        if frontier_len == 0 {
+            return;
+        }
 
-    #[inline]
-    pub fn sort_with_tick(&mut self) {
-        self.deq.make_contiguous()
-        .sort_by_key(|s| s.tick);
-    }
+        if self.cache_size == 0 {
+            self.frontier.clear();
+            return;
+        }
 
-    #[inline]
-    pub fn iter(&self) -> Iter<'_, ComponentSnapshot<C>> {
-        self.deq.iter()
+        if frontier_len > self.cache_size {
+            let uncacheable = frontier_len - self.cache_size;
+            self.frontier.drain(..uncacheable);
+            self.cache.clear();
+            frontier_len = self.frontier_len();
+        }
+
+        if self.cache_len() + frontier_len > self.cache_size {
+            self.cache.drain(..frontier_len);
+        }
+
+        let drain = self.frontier.drain(..);
+        self.cache.append(&mut drain.collect());
+
+        debug_assert!(self.frontier_len() == 0);
+        debug_assert!(self.cache_len() <= self.cache_size);
     }
 }
 
@@ -126,13 +229,9 @@ fn server_populate_component_snapshots<C: Component + Clone>(
     let tick = server_tick.get();
     for (c, mut snaps) in query.iter_mut() {
         match snaps.insert(c.clone(), tick) {
-            Ok(()) => debug!(
-                "inserted to component snapshot at tick: {} len: {}", 
-                tick, snaps.len()
-            ),
+            Ok(()) => (),
             Err(e) => warn!("discarding: {e}") 
         }
-        break;
     }
 }
 
@@ -148,13 +247,9 @@ fn client_populate_component_snapshots<C: Component + Clone>(
     for (c, mut snaps, confirmed_tick) in query.iter_mut() {
         let tick = confirmed_tick.last_tick().get();
         match snaps.insert(c.clone(), tick) {
-            Ok(()) => debug!(
-                "inserted to component buffer at tick: {} now len: {}",
-                tick, snaps.len()
-            ),
+            Ok(()) => (),
             Err(e) => warn!("discarding: {e}")
         }
-        break;
     }
 }
 

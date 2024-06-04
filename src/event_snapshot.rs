@@ -9,7 +9,12 @@ use bevy_replicon::{
     prelude::*, 
 };
 use anyhow::bail;
-use super::{network_entity::NetworkEntity, network_event::NetworkEvent};
+
+use super::{
+    Owning, 
+    network_entity::NetworkEntity, 
+    network_event::NetworkEvent
+};
 
 pub struct EventSnapshot<E: NetworkEvent> {
     event: E,
@@ -83,15 +88,17 @@ impl<E: NetworkEvent> EventSnapshots<E> {
     }
 
     #[inline]
-    pub fn latest_snapshot(&self) -> Option<&EventSnapshot<E>> {
-        if self.frontier_len() == 0 {
+    pub fn frontier_back(&self) -> Option<&EventSnapshot<E>> {
+        let len = self.frontier_len();
+        if len == 0 {
             return None;
         }
-        self.frontier.get(self.frontier_len() - 1)
+
+        self.frontier.get(len - 1)
     }
 
     #[inline]
-    pub fn frontier_snapshot(&self) -> Option<&EventSnapshot<E>> {
+    pub fn frontier_front(&self) -> Option<&EventSnapshot<E>> {
         self.frontier.get(0)
     }
 
@@ -114,14 +121,17 @@ impl<E: NetworkEvent> EventSnapshots<E> {
     -> anyhow::Result<()> {
         if self.cache_size > 0 
         && self.frontier_len() > self.cache_size {
-            warn!("are you missing to call cache() ?");
+            warn!(
+                "frontier len: {}, call cache() after frontier_ref()",
+                self.frontier_len()
+            );
         }
 
         let received_timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)?
         .as_secs_f64();
 
-        if let Some(frontier_snap) = self.frontier_snapshot() {
+        if let Some(frontier_snap) = self.frontier_front() {
             if tick < frontier_snap.tick {
                 bail!(
                     "tick: {tick} is older than frontier snapshot: {}", 
@@ -153,24 +163,29 @@ impl<E: NetworkEvent> EventSnapshots<E> {
             tick
         ));
 
-        info!("frontier size: {}", self.frontier_len());
-
+        debug!(
+            "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
+            self.frontier_index(),
+            self.frontier_len(), 
+            self.cache_len()
+        );
+        
         Ok(())
     }
 
     #[inline]
-    pub fn sort_by_index(&mut self) {
+    pub fn sort_frontier_by_index(&mut self) {
         if self.frontier_len() == 0 {
             return;
         }
 
         self.frontier
-        .sort_by_key(|s| s.index());
+        .sort_unstable_by_key(|s| s.index());
     }
 
     pub fn cache(&mut self) {
-        let mut frontier_size = self.frontier_len();
-        if frontier_size == 0 {
+        let mut frontier_len = self.frontier_len();
+        if frontier_len == 0 {
             return;
         } 
         
@@ -179,18 +194,18 @@ impl<E: NetworkEvent> EventSnapshots<E> {
             return;
         } 
 
-        if frontier_size > self.cache_size {
-            let uncacheable = self.cache_size - frontier_size;
-            _ = self.frontier.drain(..uncacheable);
-            frontier_size = self.frontier_len();
+        if frontier_len > self.cache_size {
+            let uncacheable = frontier_len - self.cache_size;
+            self.frontier.drain(..uncacheable);
+            frontier_len = self.frontier_len();
         }
         
-        if self.cache_len() + frontier_size > self.cache_size {
-            _ = self.cache.drain(..frontier_size);
+        if self.cache_len() + frontier_len > self.cache_size {
+            self.cache.drain(..frontier_len);
         }
 
         // frontier is not empty
-        let latest_idx = self.latest_snapshot()
+        let latest_idx = self.frontier_back()
         .unwrap()
         .index(); 
         let drain = self.frontier.drain(..);
@@ -229,7 +244,12 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
 }
 
 fn client_populate_client_event_snapshots<E: NetworkEvent>(
-    mut query: Query<(&mut EventSnapshots<E>, &ConfirmHistory)>,
+    mut query: Query<(
+        &mut EventSnapshots<E>, 
+        &ConfirmHistory
+    ),
+        With<Owning>
+    >,
     mut events: EventReader<E>,
 ) {
     for event in events.read() {

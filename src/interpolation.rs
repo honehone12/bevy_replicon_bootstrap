@@ -14,18 +14,18 @@ pub trait LinearInterpolatable: Component {
 }
 
 pub(crate) fn linear_interpolate<C>(
-    current: &C,
     snaps: &ComponentSnapshots<C>,
     network_tick_delta: f64
-) -> anyhow::Result<C>
+) -> anyhow::Result<Option<C>>
 where C: Component + LinearInterpolatable + Clone {
-    let len = snaps.len();
-    if len < 2 {
-        return Ok(current.clone());
+    if snaps.frontier_len() < 2 {
+        return Ok(None)
     }
 
-    // deque is longer than or equal 2
-    let mut iter = snaps.iter().rev();
+    let mut iter = snaps.frontier_ref()
+    .iter()
+    .rev();
+    // frontier is longer than or equal 2
     let latest = iter.next().unwrap();
     
     let now = SystemTime::now()
@@ -39,7 +39,10 @@ where C: Component + LinearInterpolatable + Clone {
 
     // become 1.0
     if elapsed >= network_tick_delta {
-        return Ok(latest.component().clone());
+        return Ok(Some(
+            latest.component()
+            .clone()
+        ));
     }
     
     let per = (elapsed / network_tick_delta).clamp(0.0, 1.0) as f32;
@@ -48,5 +51,5 @@ where C: Component + LinearInterpolatable + Clone {
     let interpolated = second
     .component()
     .linear_interpolate(latest.component(), per);
-    Ok(interpolated)
+    Ok(Some(interpolated))
 }

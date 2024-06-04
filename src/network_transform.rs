@@ -317,8 +317,8 @@ P: Resource {
 fn update_transform_server_system<T, R, E, P>(
     mut query: Query<(
         &NetworkEntity,
-        &mut T, &ComponentSnapshots<T>, &mut PredioctionError<T>,
-        &mut R, &ComponentSnapshots<R>, &mut PredioctionError<R>,
+        &mut T, &mut ComponentSnapshots<T>, &mut PredioctionError<T>,
+        &mut R, &mut ComponentSnapshots<R>, &mut PredioctionError<R>,
         &mut EventSnapshots<E>
     )>,
     params: Res<P>,
@@ -335,24 +335,30 @@ E: NetworkMovement,
 P: Resource {
     for (
         net_e,
-        mut net_trans, trans_snaps, mut trans_pred_err,
-        mut net_rot, rot_snaps, mut rot_pred_err, 
+        mut net_trans, mut trans_snaps, mut trans_pred_err,
+        mut net_rot, mut rot_snaps, mut rot_pred_err, 
         mut movements
     ) in query.iter_mut() {
+        trans_snaps.cache();
+        rot_snaps.cache();
+        
         if movements.frontier_len() == 0 {
             continue;
         }
 
-        movements.sort_by_index();
+        movements.sort_frontier_by_index();
         
         // frontier is not empty
-        let first = movements.frontier_snapshot()
+        let first = movements.frontier_front()
         .unwrap()
         .event();
         let first_timestamp = first.timestamp();
 
-        let trans_idx = match trans_snaps.iter()
-        .rposition(|s| s.timestamp() <= first_timestamp) {
+        let trans_cache = trans_snaps.cache_ref();
+        let trans_idx = match trans_cache.iter()
+        .rposition(|s| 
+            s.timestamp() <= first_timestamp
+        ) {
             Some(idx) => idx,
             None => {
                 if cfg!(debug_assertions) {
@@ -366,8 +372,12 @@ P: Resource {
                 }
             }
         };
-        let rot_idx = match rot_snaps.iter()
-        .rposition(|s| s.timestamp() <= first_timestamp) {
+
+        let rot_cache = rot_snaps.cache_ref();
+        let rot_idx = match rot_cache.iter()
+        .rposition(|s| 
+            s.timestamp() <= first_timestamp
+        ) {
             Some(idx) => idx,
             None => {
                 if cfg!(debug_assertions) {
@@ -383,11 +393,11 @@ P: Resource {
         };
 
         // get by found index
-        let server_translation = trans_snaps.get(trans_idx)
+        let server_translation = trans_cache.get(trans_idx)
         .unwrap()
         .component()
         .to_vec3(axis.translation);
-        let server_rotation = rot_snaps.get(rot_idx)
+        let server_rotation = rot_cache.get(rot_idx)
         .unwrap()
         .component()
         .to_quat(axis.rotation);
@@ -453,8 +463,12 @@ P: Resource {
 }
 
 fn update_transform_client_system<T, R, E, P>(
-    mut query: Query<
-        (&mut Transform, &mut EventSnapshots<E>), 
+    mut query: Query<(
+        &mut Transform,
+        &mut ComponentSnapshots<T>,
+        &mut ComponentSnapshots<R>, 
+        &mut EventSnapshots<E>
+    ), 
         With<Owning>
     >,
     params: Res<P>,
@@ -467,7 +481,12 @@ T: NetworkTranslation,
 R: NetworkRotation, 
 E: NetworkMovement, 
 P: Resource {
-    if let Ok((mut transform, mut movements)) = query.get_single_mut() {
+    if let Ok((
+        mut transform,
+        mut trans_snaps,
+        mut rot_snaps, 
+        mut movements
+    )) = query.get_single_mut() {
         for movement in movements.frontier_ref()
         .iter() {
             let mut translation = T::from_vec3(transform.translation, axis.translation);        
@@ -484,6 +503,8 @@ P: Resource {
         }
 
         movements.cache();
+        trans_snaps.cache();
+        rot_snaps.cache();
     } 
 }
 
@@ -501,42 +522,63 @@ T: NetworkTranslation + LinearInterpolatable,
 R: NetworkRotation + LinearInterpolatable {
     for (
         mut transform, 
-        net_translation, mut translation_snaps,
-        net_rotation, mut rotation_snaps
+        net_trans, mut trans_snaps,
+        net_rot, mut rot_snaps
     ) in query.iter_mut() {
-        rotation_snaps.sort_with_tick();
-        match linear_interpolate(
-            net_rotation, 
-            &rotation_snaps, 
+        const REQUIRED: usize = 2;
+
+        rot_snaps.sort_frontier_by_timestamp();
+        let rot = match linear_interpolate(
+            &rot_snaps, 
             config.network_tick_delta
         ) {
-            Ok(r) => transform.rotation = r.to_quat(axis.rotation),
+            Ok(r_op) => {
+                match r_op {
+                    Some(r) => r.to_quat(axis.rotation),
+                    None => transform.rotation
+                }
+            }
             Err(e) => {
                 if cfg!(debug_assertions) {
                     panic!("error on rotation interpolation: {e}");
                 } else {
                     error!("error on rotation interpolation: {e}");
-                    transform.rotation = net_rotation.to_quat(axis.rotation);
+                    net_rot.to_quat(axis.rotation)
                 }
             }
         };
+        let rot_len = rot_snaps.frontier_len();
+        if rot_len > REQUIRED {
+            rot_snaps.cache_n(rot_len - REQUIRED);
+        }
+        transform.rotation = rot;
         
-        translation_snaps.sort_with_tick();
-        match linear_interpolate(
-            net_translation, 
-            &translation_snaps, 
+        trans_snaps.sort_frontier_by_timestamp();
+        let trans = match linear_interpolate(
+            &trans_snaps, 
             config.network_tick_delta
         ) {
-            Ok(t) => transform.translation = t.to_vec3(axis.translation),
+            Ok(t_op) => {
+                match t_op {
+                    Some(t) => t.to_vec3(axis.translation),
+                    None => transform.translation
+                }
+            }
             Err(e) => {
                 if cfg!(debug_assertions) {
                     panic!("error on translation interpolation: {e}");
                 } else {
                     error!("error on translation interpolation: {e}");
-                    transform.translation = net_translation.to_vec3(axis.translation);
+                    trans_snaps.cache();
+                    net_trans.to_vec3(axis.translation)
                 }
             }
         };
+        let trans_len = trans_snaps.frontier_len();
+        if trans_len > REQUIRED {
+            trans_snaps.cache_n(trans_len - REQUIRED);
+        }
+        transform.translation = trans;
     }
 }
 
