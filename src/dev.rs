@@ -63,7 +63,7 @@ impl PlayerPresentation {
     }
 }
 
-#[derive(Component, Default, Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Component, Default)]
 pub struct PlayerGroup {
     pub group: u8
 }

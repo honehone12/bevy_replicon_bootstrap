@@ -1,84 +1,81 @@
-use std::hash::Hash;
 use std::marker::PhantomData;
-use bevy::{prelude::*, utils::{hashbrown::hash_map::Keys, HashMap}};
-use bevy_replicon::prelude::*;
+use bevy::prelude::*;
+use bevy_replicon::{
+    prelude::*,
+    server::server_tick::ServerTick
+};
 use crate::prelude::*;
 
-pub trait RelevantGroup
-: Component + Eq + PartialEq + Clone + Copy + Hash + Default {
+pub trait RelevantGroup: Component + Default {
     fn is_relevant(&self, rhs: &Self) -> bool;
 }
 
-#[derive(Resource, Default)]
-pub struct RelevancyMap<G: RelevantGroup> {
-    entity_map: HashMap<G, Vec<(Entity, NetworkEntity)>>,
-    group_map: HashMap<(Entity, NetworkEntity), G>
+#[derive(Default)]
+pub struct Relevancy<G: RelevantGroup> {
+    pub is_relevant: bool,
+    pub id_pair: (u64, u64),
+    pub tick: u32,
+    phantom: PhantomData<G>
 }
 
-impl<G: RelevantGroup> RelevancyMap<G> {
+impl<G: RelevantGroup> Relevancy<G> {
     #[inline]
-    pub fn insert(&mut self, 
-        entity: Entity, 
-        net_entity: NetworkEntity,
-        group: G 
-    ) {
-        if let Some(old) = self.group_map
-        .insert((entity, net_entity), group) {
-            // get by returned old group
-            let v = self.entity_map.get_mut(&old)
-            .unwrap();
-            let idx = v.iter()
-            // get by key of Some
-            .position(|&(e, net_e)| e == entity && net_e == net_entity)
-            .unwrap();
-            v.swap_remove(idx);
-        } 
-
-        let v = self.entity_map.entry(group)
-        .or_insert(default());
-        v.push((entity, net_entity));
-    }
-
-    #[inline]
-    pub fn get_entities(&mut self, group: &G) 
-    -> Option<&Vec<(Entity, NetworkEntity)>> {
-        self.entity_map.get(group)
-    }
-
-    #[inline]
-    pub fn get_group(&mut self, entity: Entity, net_entity: NetworkEntity)
-    -> Option<&G> {
-        self.group_map.get(&(entity, net_entity))
-    }
-
-    #[inline]
-    pub fn iter_group(&self) -> Keys<'_, G, Vec<(Entity, NetworkEntity)>> {
-        self.entity_map.keys()
-    }
-
-    #[inline]
-    pub fn remove(&mut self, entity: Entity, net_entity: NetworkEntity) {
-        if let Some(g) = self.group_map.remove(&(entity, net_entity)) {
-            // get by returned group
-            let v = self.entity_map.get_mut(&g)
-            .unwrap();
-            let idx = v.iter()
-            // get by key of Some
-            .position(|&(e, net_e)| e == entity && net_e == net_entity)
-            .unwrap();
-            v.swap_remove(idx);
+    pub fn new(
+        client_id_pair: (ClientId, ClientId), 
+        tick: u32, 
+        is_relevant: bool
+    ) -> Self {
+        Self { 
+            is_relevant, 
+            id_pair: (client_id_pair.0.get(), client_id_pair.1.get()), 
+            tick, 
+            phantom: PhantomData::<G> 
         }
     }
+
+    #[inline]
+    pub fn cient_id_pair(&self) -> (ClientId, ClientId) {
+        (ClientId::new(self.id_pair.0), ClientId::new(self.id_pair.1))
+    }
 }
 
-fn relevancy_system<G: RelevantGroup>(
-    query: Query<(Entity, &NetworkEntity, &G), Changed<G>>,
-    mut relevancy_map: ResMut<RelevancyMap<G>>
+pub type RelevancyMap<G> = EntityPairMap<Relevancy<G>>;
+
+fn relevancy_mapping_system<G: RelevantGroup>(
+    changed: Query<(Entity, &NetworkEntity, &G), Changed<G>>,
+    query: Query<(Entity, &NetworkEntity, &G)>,
+    mut relevancy_map: ResMut<RelevancyMap<G>>,
+    server_tick: Res<ServerTick>
 ) {
-    for (e, net_e, group) in query.iter() {
-        relevancy_map.remove(e, *net_e);
-        relevancy_map.insert(e, *net_e, *group);
-    }
+    for (changed_e, changed_net_e, changed_group) in changed.iter() {
+        let tick = server_tick.get();
+        for (e, net_e, group) in query.iter() {
+            if changed_e == e {
+                continue;
+            }
+
+            if let Some(r) = relevancy_map.get(changed_e, e) {
+                if r.tick == tick {
+                    continue;
+                }
+            }
+
+            let is_relevant = changed_group.is_relevant(&group);
+            let relevancy = Relevancy::<G>::new(
+                (changed_net_e.client_id(), net_e.client_id()), 
+                tick, 
+                is_relevant
+            );
+
+            relevancy_map.insert(changed_e, e, relevancy);
+            debug!(
+                "updated relevency: {:?}:{:?} = {} tick: {}",
+                changed_e, e,
+                is_relevant,
+                tick
+            );
+        }
+    }    
 }
 
 fn handle_player_entity_event<G: RelevantGroup>(
@@ -86,22 +83,22 @@ fn handle_player_entity_event<G: RelevantGroup>(
     mut relevancy_map: ResMut<RelevancyMap<G>>
 ) {
     for e in events.read() {
-        if let &PlayerEntityEvent::Despawned { client_id, entity } = e {
-            relevancy_map.remove(entity, NetworkEntity::new(client_id));
+        if let &PlayerEntityEvent::Despawned { client_id: _, entity } = e {
+            relevancy_map.remove(entity);
         }
     }
 }
 
 fn relevancy_culling_system<G: RelevantGroup>(
     player_views: Query<
-        (Entity, &NetworkEntity, &G), 
-        With<PlayerView>
+        (Entity, &NetworkEntity), 
+        (With<PlayerView>, With<G>)
     >,
-    query: Query<(Entity, &G)>,
+    query: Query<Entity, With<G>>,
     mut connected_clients: ResMut<ConnectedClients>,
     relevancy_map: Res<RelevancyMap<G>>
 ) {
-    for (player_e, player_net_e, player_group) in player_views.iter() {
+    for (player_e, player_net_e) in player_views.iter() {
         let client_id = player_net_e.client_id();
         let visibility = match connected_clients.get_client_mut(client_id) {
             Some(c) => c.visibility_mut(),
@@ -111,15 +108,27 @@ fn relevancy_culling_system<G: RelevantGroup>(
             }
         };
         
-        for (e, group) in query.iter() {
+        for e in query.iter() {
             if player_e == e {
                 continue;
             }
 
-            if !player_group.is_relevant(&group) {
-                if visibility.is_visible(e) {
-                    visibility.set_visibility(e, false);
+            match relevancy_map.get(player_e, e) {
+                Some(r) => {
+                    if r.is_relevant {
+                        continue;
+                    }
                 }
+                None => {
+                    warn!(
+                        "{:?}:{:?} pair is not mapped in relevancy map",
+                        player_e, e
+                    );
+                }
+            };
+            
+            if visibility.is_visible(e) {
+                visibility.set_visibility(e, false);
             }
         }
     }
@@ -131,14 +140,13 @@ impl<G: RelevantGroup> Plugin for RelevancyPlugin<G> {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
             app.insert_resource(RelevancyMap::<G>::default())
-            .add_systems(PreUpdate, (
-                relevancy_system::<G>,
+            .add_systems(PreUpdate, 
                 handle_player_entity_event::<G>
-            ).chain().after(PlayerEntityEventSet))
-            .add_systems(PostUpdate, 
+                .after(PlayerEntityEventSet))
+            .add_systems(PostUpdate, (
+                relevancy_mapping_system::<G>,
                 relevancy_culling_system::<G>
-                .after(CullingSet)
-                .before(ServerSet::Send)
+            ).chain().after(CullingSet).before(ServerSet::Send)
             );
         } else {
             panic!("could not find replicon server nor client");

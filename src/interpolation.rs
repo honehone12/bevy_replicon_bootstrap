@@ -9,15 +9,14 @@ pub struct InterpolationConfig {
     pub network_tick_delta: f64
 }
 
-pub trait LinearInterpolatable: Component {
+pub trait LinearInterpolatable: Component + Clone {
     fn linear_interpolate(&self, rhs: &Self, per: f32) -> Self;
 }
 
-pub(crate) fn linear_interpolate<C>(
+pub(crate) fn linear_interpolate_by_time<C: LinearInterpolatable>(
     snaps: &ComponentSnapshots<C>,
     network_tick_delta: f64
-) -> anyhow::Result<Option<C>>
-where C: Component + LinearInterpolatable + Clone {
+) -> anyhow::Result<Option<C>> {
     if snaps.frontier_len() < 2 {
         return Ok(None)
     }
@@ -45,7 +44,8 @@ where C: Component + LinearInterpolatable + Clone {
         ));
     }
     
-    let per = (elapsed / network_tick_delta).clamp(0.0, 1.0) as f32;
+    let per = (elapsed / network_tick_delta)
+    .clamp(0.0, 1.0) as f32;
     let second = iter.next().unwrap();
 
     let interpolated = second

@@ -125,13 +125,6 @@ impl<C: Component> ComponentSnapshots<C> {
             timestamp, 
             tick
         ));
-
-        debug!(
-            "inserted component snapshot: frontier len: {}, cache len: {}",
-            self.frontier_len(),
-            self.cache_len()
-        );
-
         Ok(())
     }
 
@@ -229,7 +222,11 @@ fn server_populate_component_snapshots<C: Component + Clone>(
     let tick = server_tick.get();
     for (c, mut snaps) in query.iter_mut() {
         match snaps.insert(c.clone(), tick) {
-            Ok(()) => (),
+            Ok(()) => debug!(
+                "inserted component snapshot: frontier len: {}, cache len: {}",
+                snaps.frontier_len(),
+                snaps.cache_len()
+            ),
             Err(e) => warn!("discarding: {e}") 
         }
     }
@@ -247,7 +244,11 @@ fn client_populate_component_snapshots<C: Component + Clone>(
     for (c, mut snaps, confirmed_tick) in query.iter_mut() {
         let tick = confirmed_tick.last_tick().get();
         match snaps.insert(c.clone(), tick) {
-            Ok(()) => (),
+            Ok(()) => debug!(
+                "inserted component snapshot: frontier len: {}, cache len: {}",
+                snaps.frontier_len(),
+                snaps.cache_len()
+            ),
             Err(e) => warn!("discarding: {e}")
         }
     }

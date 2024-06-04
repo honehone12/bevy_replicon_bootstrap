@@ -162,14 +162,6 @@ impl<E: NetworkEvent> EventSnapshots<E> {
             received_timestamp, 
             tick
         ));
-
-        debug!(
-            "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
-            self.frontier_index(),
-            self.frontier_len(), 
-            self.cache_len()
-        );
-        
         Ok(())
     }
 
@@ -235,7 +227,12 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
             }
 
             match snaps.insert(event.clone(), tick) {
-                Ok(()) => (),
+                Ok(()) => debug!(
+                    "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
+                    snaps.frontier_index(),
+                    snaps.frontier_len(), 
+                    snaps.cache_len()
+                ),
                 Err(e) => warn!("discarding: {e}")
             }
         }
@@ -260,7 +257,12 @@ fn client_populate_client_event_snapshots<E: NetworkEvent>(
         for (mut snaps, confirmed_tick) in query.iter_mut() {
             let tick = confirmed_tick.last_tick().get();
             match snaps.insert(event.clone(), tick) {
-                Ok(()) => (),
+                Ok(()) => debug!(
+                    "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
+                    snaps.frontier_index(),
+                    snaps.frontier_len(), 
+                    snaps.cache_len()
+                ),
                 Err(e) => warn!("discarding: {e}")
             }
         }

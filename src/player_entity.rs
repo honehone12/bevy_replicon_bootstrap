@@ -89,7 +89,6 @@ fn handle_server_event(
                 let entity = commands.spawn((
                     NetworkEntity::new(client_id),
                     Replicated,
-                    PlayerView,
                 ))
                 .id();
                 player_entities.insert(client_id, entity);

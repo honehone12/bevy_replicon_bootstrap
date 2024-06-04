@@ -528,7 +528,7 @@ R: NetworkRotation + LinearInterpolatable {
         const REQUIRED: usize = 2;
 
         rot_snaps.sort_frontier_by_timestamp();
-        let rot = match linear_interpolate(
+        let rot = match linear_interpolate_by_time(
             &rot_snaps, 
             config.network_tick_delta
         ) {
@@ -554,7 +554,7 @@ R: NetworkRotation + LinearInterpolatable {
         transform.rotation = rot;
         
         trans_snaps.sort_frontier_by_timestamp();
-        let trans = match linear_interpolate(
+        let trans = match linear_interpolate_by_time(
             &trans_snaps, 
             config.network_tick_delta
         ) {

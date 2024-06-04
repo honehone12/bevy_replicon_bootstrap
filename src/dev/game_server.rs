@@ -119,6 +119,7 @@ fn handle_player_entity_event(
 
             commands.entity(*entity).insert((
                 PlayerPresentation::random(),
+                PlayerView,
                 Culling::<NetworkTranslation2D>::default(),
                 group,
                 trans_bundle,

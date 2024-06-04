@@ -1,8 +1,5 @@
 use std::marker::PhantomData;
-use bevy::{
-    prelude::*,
-    utils::HashMap
-};
+use bevy::prelude::*;
 use bevy_replicon::{
     prelude::*, 
     server::server_tick::ServerTick
@@ -49,44 +46,7 @@ pub struct DistanceAt {
     pub distance: f32
 }
 
-#[derive(Resource, Default)]
-pub struct DistanceMap(HashMap<(Entity, Entity), DistanceAt>);
-
-impl DistanceMap {
-    #[inline]
-    pub fn insert(
-        &mut self,
-        key_l: Entity, key_r: Entity,
-        distance_at: DistanceAt
-    ) -> Option<DistanceAt> {
-        let key = if key_l >= key_r {
-            (key_l, key_r)
-        } else {
-            (key_r, key_l)
-        };
-
-        self.0.insert(key, distance_at)
-    }
-
-    #[inline]
-    pub fn get(
-        &self,
-        key_l: Entity, key_r: Entity
-    ) -> Option<&DistanceAt> {
-        let key = if key_l >= key_r {
-            (key_l, key_r)
-        } else {
-            (key_r, key_l)
-        };
-
-        return self.0.get(&key)
-    }
-
-    #[inline]
-    pub fn remove(&mut self, key: Entity) {
-        self.0.retain(|k, _| k.0 != key && k.1 != key);
-    }
-}
+pub type DistanceMap = EntityPairMap<DistanceAt>;
 
 #[derive(Resource)]
 pub struct CullingConfig {
@@ -104,35 +64,33 @@ fn calculate_distance_system<C>(
     server_tick: Res<ServerTick>
 )
 where C: DistanceCalculatable + Default {
-    if !query.is_empty() {
+    for (player_e, player_c) in player_views.iter() {    
         let tick = server_tick.get();
-        for (player_e, player_c) in player_views.iter() {    
-            for (e, c) in query.iter() {
-                if e == player_e {
+        for (e, c) in query.iter() {
+            if player_e == e {
+                continue;
+            }
+
+            if let Some(d) = distance_map.get(player_e, e) {
+                if d.tick == tick {
                     continue;
                 }
-    
-                if let Some(d) = distance_map.get(player_e, e) {
-                    if d.tick == tick {
-                        continue;
-                    }
-                }
-    
-                let distance = player_c.distance(&c);
-                let distance_at = DistanceAt{
-                    tick,
-                    distance
-                };
-                
-                distance_map.insert(player_e, e, distance_at);
-                debug!(
-                    "updated distance from: {:?} to: {:?} tick: {} distance: {}",
-                    player_e, e,
-                    tick, 
-                    distance
-                );
-            }        
-        }
+            }
+
+            let distance = player_c.distance(&c);
+            let distance_at = DistanceAt{
+                tick,
+                distance
+            };
+            
+            distance_map.insert(player_e, e, distance_at);
+            debug!(
+                "updated distance from: {:?} to: {:?} tick: {} distance: {}",
+                player_e, e,
+                tick, 
+                distance
+            );
+        }        
     }
 }
 
@@ -144,54 +102,56 @@ fn culling_system<C>(
     mut connected_clients: ResMut<ConnectedClients>
 )
 where C: DistanceCalculatable + Default {
-    if distance_map.is_changed() {
-        for (player_e, player_net_e) in player_views.iter() {
-            let client_id = player_net_e.client_id();
-            let visibility = match connected_clients.get_client_mut(client_id) {
-                Some(c) => c.visibility_mut(),
-                None => {
-                    error!("client is not mapped in connected_clients, disconnected?");
-                    continue;
-                }
-            };
-            
-            for (e, culling) in query.iter() {
-                if player_e == e {
-                    continue;
-                }
+    if !distance_map.is_changed() {
+        return;
+    }
 
-                let (multiplier, addition) = match culling.modifier {
-                    CullingModifier::Always => {
-                        if !visibility.is_visible(e) {
-                            visibility.set_visibility(e, true);
-                        }
-                        continue;    
-                    }
-                    CullingModifier::Modify { multiplier, addition } 
-                    => (multiplier, addition)
-                };
+    for (player_e, player_net_e) in player_views.iter() {
+        let client_id = player_net_e.client_id();
+        let visibility = match connected_clients.get_client_mut(client_id) {
+            Some(c) => c.visibility_mut(),
+            None => {
+                error!("client is not mapped in connected_clients, disconnected?");
+                continue;
+            }
+        };
+        
+        for (e, culling) in query.iter() {
+            if player_e == e {
+                continue;
+            }
 
-                let distance = match distance_map.get(player_e, e) {
-                    Some(d) => d.distance,
-                    None => 0.0
-                };
-
-                debug!(
-                    "checking {player_e:?}:{e:?} distance: {} multiplier: {} addition: {}", 
-                    distance,
-                    multiplier,
-                    addition
-                );
-
-                let result = distance * multiplier + addition;
-                if result >= culling_config.culling_threshold {
-                    if visibility.is_visible(e) {
-                        visibility.set_visibility(e, false);
-                    }
-                } else {
+            let (multiplier, addition) = match culling.modifier {
+                CullingModifier::Always => {
                     if !visibility.is_visible(e) {
                         visibility.set_visibility(e, true);
                     }
+                    continue;    
+                }
+                CullingModifier::Modify { multiplier, addition } 
+                => (multiplier, addition)
+            };
+
+            let distance = match distance_map.get(player_e, e) {
+                Some(d) => d.distance,
+                None => 0.0
+            };
+
+            debug!(
+                "checking {player_e:?}:{e:?} distance: {} multiplier: {} addition: {}", 
+                distance,
+                multiplier,
+                addition
+            );
+
+            let result = distance * multiplier + addition;
+            if result >= culling_config.culling_threshold {
+                if visibility.is_visible(e) {
+                    visibility.set_visibility(e, false);
+                }
+            } else {
+                if !visibility.is_visible(e) {
+                    visibility.set_visibility(e, true);
                 }
             }
         }

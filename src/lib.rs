@@ -11,6 +11,7 @@ pub mod server_builder;
 pub mod network_transform;
 pub mod player_entity;
 pub mod relevancy;
+pub mod ee_map;
 
 pub mod prelude {
     pub use crate::{
@@ -26,6 +27,7 @@ pub mod prelude {
         server_builder::*,
         client_builder::*,
         relevancy::*,
+        ee_map::*,
         RepliconActionPlugin
     };
 }
