@@ -238,7 +238,6 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
                 Ok(()) => (),
                 Err(e) => warn!("discarding: {e}")
             }
-            break;
         }
     }
 }
@@ -264,7 +263,6 @@ fn client_populate_client_event_snapshots<E: NetworkEvent>(
                 Ok(()) => (),
                 Err(e) => warn!("discarding: {e}")
             }
-            break;
         }
     }
 }
