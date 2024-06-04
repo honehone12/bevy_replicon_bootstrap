@@ -193,7 +193,8 @@ where C: DistanceCalculatable + Default {
             .add_systems(PostUpdate, (
                 calculate_distance_system::<C>,
                 culling_system::<C>
-            ).chain().in_set(CullingSet));
+            ).chain(
+            ).in_set(CullingSet));
 
             if self.auto_clean {
                 app.add_systems(PreUpdate, 

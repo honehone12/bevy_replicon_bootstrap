@@ -146,7 +146,9 @@ impl<G: RelevantGroup> Plugin for RelevancyPlugin<G> {
             .add_systems(PostUpdate, (
                 relevancy_mapping_system::<G>,
                 relevancy_culling_system::<G>
-            ).chain().after(CullingSet).before(ServerSet::Send)
+            ).chain(
+            ).after(CullingSet
+            ).before(ServerSet::Send)
             );
         } else {
             panic!("could not find replicon server nor client");
