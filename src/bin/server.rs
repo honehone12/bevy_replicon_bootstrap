@@ -7,7 +7,7 @@ use bevy::{
     log::{Level, LogPlugin}, 
     prelude::*
 };
-use bevy_replicon_action::{
+use bevy_replicon_bootstrap::{
     prelude::*,
     dev::game_server::*, 
     dev::config::*

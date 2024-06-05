@@ -867,7 +867,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_replicon_action"
+name = "bevy_replicon_bootstrap"
 version = "0.1.0"
 dependencies = [
  "anyhow",
