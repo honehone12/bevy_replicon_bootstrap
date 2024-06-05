@@ -1,4 +1,4 @@
-#### Networking for action games on top of bevy_replicon.  
+#### Networking bootstrap on top of bevy_replicon.  
 Implementing......
 - general purpose cache of components and events for
     - backwards reconciliation
@@ -8,4 +8,4 @@ Implementing......
     - client side prediction
 - client event validation
 - replication culling
-- relevant replication and events
+- relevant replication
