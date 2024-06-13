@@ -16,13 +16,13 @@ pub const DEV_MAX_UPDATE_SNAPSHOT_SIZE: usize = 2560;
 pub const DEV_MAX_SNAPSHOT_SIZE: usize = 64;
 
 pub const BASE_SPEED: f32 = 10.0;
-pub const BASE_ANGULAR_SPEED: f32 = 25.0; 
+pub const BASE_ANGULAR_SPEED: f32 = 10.0; 
 
 // (network delata time / local delta time * base speed * local delta time)^2
 // bevy's fixed update = 64hz
 // DEV_NETWORK_TICK_DELTA / 0.0156 * BASE_SPEED * 0.0156 = 0.9999
 pub const TRANSLATION_ERROR_THRESHOLD: f32 = 1.0;
-pub const ROTATION_ERROR_THRESHOLD: f32 = 1.0;
+pub const ROTATION_ERROR_THRESHOLD: f32 = 10.0;
 // 1sec / network tick
 pub const PREDICTION_ERROR_COUNT_THRESHOLD: u32 = 10;
 
