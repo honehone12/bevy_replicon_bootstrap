@@ -1,14 +1,14 @@
-use std::marker::PhantomData;
+use serde::{Deserialize, Serialize};
+use anyhow::bail;
 use bevy::{
     prelude::*,
     utils::SystemTime
 };
 use bevy_replicon::{
-    
-    client::confirm_history, prelude::*, server::server_tick::ServerTick 
+    client::confirm_history, 
+    server::server_tick::ServerTick 
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use anyhow::bail;
+use crate::core::LinearInterpolatable;
 
 #[derive(Deserialize, Serialize)]
 pub struct ComponentSnapshot<C: Component> {
@@ -212,7 +212,48 @@ impl<C: Component> ComponentSnapshots<C> {
     }
 }
 
-fn server_populate_component_snapshots<C: Component + Clone>(
+pub(crate) fn linear_interpolate_by_time<C: LinearInterpolatable>(
+    snaps: &ComponentSnapshots<C>,
+    network_tick_delta: f64
+) -> anyhow::Result<Option<C>> {
+    if snaps.frontier_len() < 2 {
+        return Ok(None)
+    }
+
+    let mut iter = snaps.frontier_ref()
+    .iter()
+    .rev();
+    // frontier is longer than or equal 2
+    let latest = iter.next().unwrap();
+    
+    let now = SystemTime::now()
+    .duration_since(SystemTime::UNIX_EPOCH)?
+    .as_secs_f64();
+    let elapsed = now - latest.timestamp();
+    
+    // network tick delta time = 100%
+    // elapsed = ?%
+    // into 0.0 ~ 1.0
+
+    // become 1.0
+    if elapsed >= network_tick_delta {
+        return Ok(Some(
+            latest.component()
+            .clone()
+        ));
+    }
+    
+    let per = (elapsed / network_tick_delta)
+    .clamp(0.0, 1.0) as f32;
+    let second = iter.next().unwrap();
+
+    let interpolated = second
+    .component()
+    .linear_interpolate(latest.component(), per);
+    Ok(Some(interpolated))
+}
+
+pub(super) fn server_populate_component_snapshots<C: Component + Clone>(
     mut query: Query<
         (&C, &mut ComponentSnapshots<C>), 
         Changed<C>
@@ -232,7 +273,7 @@ fn server_populate_component_snapshots<C: Component + Clone>(
     }
 }
 
-fn client_populate_component_snapshots<C: Component + Clone>(
+pub(super) fn client_populate_component_snapshots<C: Component + Clone>(
     mut query: Query<( 
         &C, 
         &mut ComponentSnapshots<C>,
@@ -250,29 +291,6 @@ fn client_populate_component_snapshots<C: Component + Clone>(
                 snaps.cache_len()
             ),
             Err(e) => warn!("discarding: {e}")
-        }
-    }
-}
-
-pub struct ComponentSnapshotPlugin<C>(pub PhantomData<C>)
-where C: Component + Serialize + DeserializeOwned + Clone;
-
-impl<C> Plugin for ComponentSnapshotPlugin<C>
-where C: Component + Serialize + DeserializeOwned + Clone {
-    fn build(&self, app: &mut App) {
-        if app.world.contains_resource::<RepliconServer>() {
-            app.replicate::<C>()
-            .add_systems(PostUpdate,
-                server_populate_component_snapshots::<C>
-            );
-        } else if app.world.contains_resource::<RepliconClient>() {
-            app.replicate::<C>()
-            .add_systems(PreUpdate, 
-                client_populate_component_snapshots::<C>
-                .after(ClientSet::Receive)
-            );
-        } else {
-            panic!("could not find replicon server nor client");
         }
     }
 }

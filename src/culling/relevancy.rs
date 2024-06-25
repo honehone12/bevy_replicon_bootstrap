@@ -4,7 +4,8 @@ use bevy_replicon::{
     prelude::*,
     server::server_tick::ServerTick
 };
-use crate::prelude::*;
+use super::{ee_map::*, CullingSet};
+use crate::core::*;
 
 pub trait RelevantGroup: Component + Default {
     fn is_relevant(&self, rhs: &Self) -> bool;
@@ -154,8 +155,4 @@ impl<G: RelevantGroup> Plugin for RelevancyPlugin<G> {
             panic!("could not find replicon server nor client");
         }
     }
-}
-
-pub trait RelevancyAppExt {
-    fn use_relevant_event();
 }

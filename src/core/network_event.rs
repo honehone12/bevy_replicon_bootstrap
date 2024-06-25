@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use serde::{Serialize, de::DeserializeOwned};
+use bevy::prelude::*;
 
 pub trait NetworkEvent
 : Event + Serialize + DeserializeOwned + Clone {

@@ -238,6 +238,7 @@ fn handle_player_spawned(
             
             commands.entity(e)
             .insert((
+                Owning,
                 movement_snaps,
                 fire_snaps
             ));

@@ -31,16 +31,16 @@ impl Plugin for GameCommonPlugin {
             rotation_error_threshold: ROTATION_ERROR_THRESHOLD,
             error_count_threshold: PREDICTION_ERROR_COUNT_THRESHOLD
         })
-        .add_plugins(NetworkEventSnapshotPlugin{
-            channel_kind: ChannelKind::Unreliable,
-            phantom: PhantomData::<NetworkMovement2D>
-        })
-        .add_plugins(NetworkEventSnapshotPlugin{
-            channel_kind: ChannelKind::Ordered,
-            phantom: PhantomData::<NetworkFire>
-        })
-        .add_plugins(ComponentSnapshotPlugin(PhantomData::<NetworkTranslation2D>))
-        .add_plugins(ComponentSnapshotPlugin(PhantomData::<NetworkAngle>))
+        .add_plugins(
+            EventSnapshotPlugin::<NetworkMovement2D>
+            ::new(ChannelKind::Unreliable)
+        )
+        .add_plugins(
+            EventSnapshotPlugin::<NetworkFire>
+            ::new(ChannelKind::Ordered)
+        )
+        .add_plugins(ComponentSnapshotPlugin::<NetworkTranslation2D>::new())
+        .add_plugins(ComponentSnapshotPlugin::<NetworkAngle>::new())
         .replicate::<PlayerPresentation>();
     }
 }

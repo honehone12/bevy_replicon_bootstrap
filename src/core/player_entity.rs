@@ -1,11 +1,10 @@
+use anyhow::bail;
 use bevy::{
     prelude::*,
     utils::HashMap
 };
 use bevy_replicon::prelude::*;
-use crate::prelude::*;
-
-use anyhow::bail;
+use super::network_entity::NetworkEntity;
 
 #[derive(Resource, Default)]
 pub struct PlayerEntityMap(HashMap<ClientId, Entity>);

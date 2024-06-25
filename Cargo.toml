@@ -11,10 +11,14 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
+[profile.release.package.bevy_rapier3d]
+codegen-units = 1
+
 [dependencies]
-anyhow = "1.0.83"
+anyhow = "1.0.86"
 bevy = "0.13.2"
-bevy_replicon = "0.26.1"
+bevy_replicon = "0.26.3"
 bevy_replicon_renet = "0.3.0"
 rand = "0.8.5"
-serde = "1.0.200"
+serde = "1.0.203"
+bevy_rapier3d = { version = "0.26.0", default-features = false, features = ["dim3", "debug-render-3d"] }

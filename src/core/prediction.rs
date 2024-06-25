@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
-use bevy::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
-use crate::{NetworkRotation, NetworkTranslation};
+use bevy::prelude::*;
+use super::{NetworkRotation, NetworkTranslation};
 
 #[derive(Resource)]
 pub struct PredictionErrorThreshold {

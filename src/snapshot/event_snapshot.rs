@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use anyhow::bail;
 use bevy::{
     utils::SystemTime,
     prelude::*
@@ -8,12 +8,9 @@ use bevy_replicon::{
     server::server_tick::ServerTick, 
     prelude::*, 
 };
-use anyhow::bail;
-
-use super::{
+use crate::{
     Owning, 
-    network_entity::NetworkEntity, 
-    network_event::NetworkEvent
+    core::{NetworkEntity, NetworkEvent}
 };
 
 pub struct EventSnapshot<E: NetworkEvent> {
@@ -209,7 +206,7 @@ impl<E: NetworkEvent> EventSnapshots<E> {
     }
 }
 
-fn server_populate_client_event_snapshots<E: NetworkEvent>(
+pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
     mut events: EventReader<FromClient<E>>,
     mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>,
     server_tick: Res<ServerTick>
@@ -239,7 +236,7 @@ fn server_populate_client_event_snapshots<E: NetworkEvent>(
     }
 }
 
-fn client_populate_client_event_snapshots<E: NetworkEvent>(
+pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
     mut query: Query<(
         &mut EventSnapshots<E>, 
         &ConfirmHistory
@@ -265,30 +262,6 @@ fn client_populate_client_event_snapshots<E: NetworkEvent>(
                 ),
                 Err(e) => warn!("discarding: {e}")
             }
-        }
-    }
-}
-
-pub struct NetworkEventSnapshotPlugin<E: NetworkEvent>{
-    pub channel_kind: ChannelKind,
-    pub phantom: PhantomData<E>
-}
-
-impl<E: NetworkEvent> Plugin for NetworkEventSnapshotPlugin<E> {
-    fn build(&self, app: &mut App) {
-        if app.world.contains_resource::<RepliconServer>() {
-            app.add_client_event::<E>(self.channel_kind)
-            .add_systems(PreUpdate, 
-                server_populate_client_event_snapshots::<E>
-                .after(ServerSet::Receive)    
-            );
-        } else if app.world.contains_resource::<RepliconClient>() {
-            app.add_client_event::<E>(self.channel_kind)
-            .add_systems(PostUpdate, 
-                client_populate_client_event_snapshots::<E>
-            );
-        } else {
-            panic!("could not find replicon server nor client");
         }
     }
 }
