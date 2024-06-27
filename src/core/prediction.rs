@@ -1,13 +1,14 @@
 use std::marker::PhantomData;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use bevy::prelude::*;
-use super::{NetworkRotation, NetworkTranslation};
+use bevy_replicon::prelude::*;
+use crate::prelude::*;
 
-#[derive(Resource)]
-pub struct PredictionErrorThreshold {
+#[derive(Resource, Clone)]
+pub struct PredictionConfig {
     pub translation_threshold: f32,
     pub rotation_threshold: f32,
-    pub error_count_threshold: u32
+    pub force_replicate_error_count: u32
 }
 
 #[derive(Component, Default)]
@@ -35,12 +36,13 @@ impl<C: Component + Serialize + DeserializeOwned> PredioctionError<C> {
 }
 
 #[derive(Event, Serialize, Deserialize, Default)]
-pub struct ForceReplicate<C>(PhantomData<C>)
-where C: Component + Serialize + DeserializeOwned;
+pub struct ForceReplicateTranslation<T>(PhantomData<T>)
+where T: NetworkTranslation;
+
+pub type CorrectTranslation<T> = ToClients<ForceReplicateTranslation<T>>;
 
 #[derive(Event, Serialize, Deserialize, Default)]
-pub struct ForceReplicateTransform<T, R>(
-    PhantomData<T>,
-    PhantomData<R>
-)
-where T: NetworkTranslation, R: NetworkRotation;
+pub struct ForceReplicateRotation<R>(PhantomData<R>)
+where R: NetworkRotation;
+
+pub type CorrectRotation<R> = ToClients<ForceReplicateRotation<R>>;

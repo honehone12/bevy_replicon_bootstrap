@@ -1,16 +1,12 @@
 use bevy::{
-    prelude::*, 
     utils::SystemTime,
     input::mouse::MouseMotion 
 };
 use bevy_replicon::client::confirm_history::ConfirmHistory;
-use crate::{
-    dev::{
-        config::DEV_MAX_SNAPSHOT_SIZE,
-        level::*, 
-        *
-    }, 
-    prelude::*,
+use bevy_rapier3d::prelude::*;
+use super::{
+    level::*, 
+    * 
 };
 
 #[derive(Resource)]
@@ -121,7 +117,7 @@ fn handle_input(
 fn handle_action(
     query: Query<&Transform, With<Owning>>,
     mut actions: EventReader<Action>,
-    mut movements: EventWriter<NetworkMovement2D>,
+    mut movements: EventWriter<NetworkMovement2_5D>,
     mut fires: EventWriter<NetworkFire>
 ) {
     if let Ok(transform) = query.get_single() {
@@ -141,14 +137,14 @@ fn handle_action(
                     bits |= 0x01;
                 }
 
-                let current_translation = transform.translation.xz();
-                let current_rotation = transform.rotation.to_euler(EulerRot::YXZ)
+                let current_translation = transform.translation;
+                let current_yaw = transform.rotation.to_euler(EulerRot::YXZ)
                 .0
                 .to_degrees();  
 
-                movements.send(NetworkMovement2D{
+                movements.send(NetworkMovement2_5D{
                     current_translation,
-                    current_rotation,
+                    current_yaw,
                     linear_axis: a.movement_vec,
                     rotation_axis: a.rotation_vec,
                     bits,
@@ -175,7 +171,7 @@ fn handle_player_spawned(
         Entity,
         &NetworkEntity, 
         &PlayerPresentation, 
-        &NetworkTranslation2D, 
+        &NetworkCharacterController, 
         &NetworkAngle,
         &ConfirmHistory
     ), 
@@ -193,9 +189,9 @@ fn handle_player_spawned(
         let tick = confirmed_tick.last_tick()
         .get();
         
-        let mut trans_snaps = ComponentSnapshots
+        let mut net_trans_snaps = ComponentSnapshots
         ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-        match trans_snaps.insert(*net_trans, tick) {
+        match net_trans_snaps.insert(*net_trans, tick) {
             Ok(()) => (),
             Err(e) => {
                 error(e.into());
@@ -203,9 +199,9 @@ fn handle_player_spawned(
             }
         }
         
-        let mut rot_snaps = ComponentSnapshots
+        let mut net_rot_snaps = ComponentSnapshots
         ::with_capacity(DEV_MAX_SNAPSHOT_SIZE); 
-        match rot_snaps.insert(*net_rot, tick) {
+        match net_rot_snaps.insert(*net_rot, tick) {
             Ok(()) => (),
             Err(e) => {
                 error(e.into());
@@ -216,7 +212,10 @@ fn handle_player_spawned(
         commands.entity(e)
         .insert((
             PbrBundle{
-                mesh: meshes.add(Mesh::from(Cuboid::default())),
+                mesh: meshes.add(Mesh::from(Capsule3d::new(
+                    CHARACTER_RADIUS, 
+                    CHARACTER_HALF_HIGHT * 2.0
+                ))),
                 material: materials.add(presentation.color),
                 transform: Transform{
                     translation: net_trans.to_vec3(TranslationAxis::XZ),
@@ -225,13 +224,15 @@ fn handle_player_spawned(
                 },
                 ..default()
             },
-            trans_snaps,
-            rot_snaps
+
+            Collider::capsule_y(CHARACTER_HALF_HIGHT, CHARACTER_RADIUS),
+            net_trans_snaps,
+            net_rot_snaps
         ));
 
         if net_e.client_id()
         .get() == client.id() {
-            let movement_snaps = EventSnapshots::<NetworkMovement2D>
+            let movement_snaps = EventSnapshots::<NetworkMovement2_5D>
             ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
             let fire_snaps = EventSnapshots::<NetworkFire>
             ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
@@ -239,9 +240,13 @@ fn handle_player_spawned(
             commands.entity(e)
             .insert((
                 Owning,
+                CharacterControllerBundle::default(),
                 movement_snaps,
                 fire_snaps
             ));
+        } else {
+            commands.entity(e)
+            .insert(RigidBody::KinematicPositionBased);
         }
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);

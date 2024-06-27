@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use bevy::prelude::*;
 use bevy_replicon::{
     prelude::*, 
@@ -7,16 +6,11 @@ use bevy_replicon::{
 use super::{ee_map::*, CullingSet};
 use crate::core::*;
 
-#[derive(Component, Default)]
-pub struct Culling<C>
-where C: DistanceCalculatable + Default {
-    pub modifier: CullingModifier,
-    phantom: PhantomData<C>
-}
-
-pub enum CullingModifier {
+#[derive(Component)]
+pub enum Culling {
+    Default,
     /// disable culling
-    Always,
+    Disable,
     /// modify distance
     Modify {
         /// added to distance
@@ -28,12 +22,9 @@ pub enum CullingModifier {
     }
 }
 
-impl Default for CullingModifier {
+impl Default for Culling {
     fn default() -> Self {
-        Self::Modify {
-            addition: 0.0, 
-            multiplier: 1.0 
-        }
+        Self::Default
     }
 }
 
@@ -51,16 +42,15 @@ pub struct CullingConfig {
     pub clean_up_on_disconnect: bool,
 }
 
-fn calculate_distance_system<C>(
-    query: Query<(Entity, &C), (Changed<C>, With<Culling<C>>)>,
-    player_views: Query<(Entity, &C), With<PlayerView>>,
+fn calculate_distance_system(
+    query: Query<(Entity, &Transform), (Changed<Transform>, With<Culling>)>,
+    player_views: Query<(Entity, &Transform), With<PlayerView>>,
     mut distance_map: ResMut<DistanceMap>,
     server_tick: Res<ServerTick>
-)
-where C: DistanceCalculatable + Default {
-    for (player_e, player_c) in player_views.iter() {    
+) {
+    for (player_e, player_t) in player_views.iter() {    
         let tick = server_tick.get();
-        for (e, c) in query.iter() {
+        for (e, t) in query.iter() {
             if player_e == e {
                 continue;
             }
@@ -71,7 +61,7 @@ where C: DistanceCalculatable + Default {
                 }
             }
 
-            let distance = player_c.distance(&c);
+            let distance = player_t.translation.distance_squared(t.translation);
             let distance_at = DistanceAt{
                 tick,
                 distance
@@ -88,14 +78,13 @@ where C: DistanceCalculatable + Default {
     }
 }
 
-fn culling_system<C>(
-    query: Query<(Entity, &Culling<C>)>,
+fn culling_system(
+    query: Query<(Entity, &Culling)>,
     player_views: Query<(Entity, &NetworkEntity), With<PlayerView>>,
     distance_map: Res<DistanceMap>,
     culling_config: Res<CullingConfig>,
     mut connected_clients: ResMut<ConnectedClients>
-)
-where C: DistanceCalculatable + Default {
+) {
     if !distance_map.is_changed() {
         return;
     }
@@ -115,15 +104,16 @@ where C: DistanceCalculatable + Default {
                 continue;
             }
 
-            let (multiplier, addition) = match culling.modifier {
-                CullingModifier::Always => {
+            let (addition, multiplier) = match culling {
+                &Culling::Default => (0.0, 0.0),
+                &Culling::Modify { addition, multiplier } => (addition, multiplier),
+                &Culling::Disable => {
                     if !visibility.is_visible(e) {
                         visibility.set_visibility(e, true);
                     }
                     continue;    
                 }
-                CullingModifier::Modify { multiplier, addition } 
-                => (multiplier, addition)
+                
             };
 
             let distance = match distance_map.get(player_e, e) {
@@ -132,13 +122,13 @@ where C: DistanceCalculatable + Default {
             };
 
             debug!(
-                "checking {player_e:?}:{e:?} distance: {} multiplier: {} addition: {}", 
+                "checking {player_e:?}:{e:?} distance: {} addition: {} multiplier: {}", 
                 distance,
-                multiplier,
-                addition
+                addition,
+                multiplier
             );
 
-            let result = distance * multiplier + addition;
+            let result = addition + distance * multiplier;
             if result >= culling_config.culling_threshold {
                 if visibility.is_visible(e) {
                     visibility.set_visibility(e, false);
@@ -164,15 +154,12 @@ fn handle_player_entity_event(
 }
 
 #[derive(Default)]
-pub struct ReplicationCullingPlugin<C>
-where C: Component + DistanceCalculatable {
+pub struct ReplicationCullingPlugin {
     pub culling_threshold: f32,
-    pub auto_clean: bool,
-    pub phantom: PhantomData<C>
+    pub auto_clean: bool
 }
 
-impl<C> Plugin for ReplicationCullingPlugin<C>
-where C: DistanceCalculatable + Default {
+impl Plugin for ReplicationCullingPlugin {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
             app.configure_sets(PostUpdate, 
@@ -185,8 +172,8 @@ where C: DistanceCalculatable + Default {
                 clean_up_on_disconnect: self.auto_clean
             })
             .add_systems(PostUpdate, (
-                calculate_distance_system::<C>,
-                culling_system::<C>
+                calculate_distance_system,
+                culling_system
             ).chain(
             ).in_set(CullingSet));
 

@@ -212,7 +212,7 @@ impl<C: Component> ComponentSnapshots<C> {
     }
 }
 
-pub(crate) fn linear_interpolate_by_time<C: LinearInterpolatable>(
+pub fn linear_interpolate_by_time<C: LinearInterpolatable>(
     snaps: &ComponentSnapshots<C>,
     network_tick_delta: f64
 ) -> anyhow::Result<Option<C>> {

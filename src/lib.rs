@@ -1,35 +1,169 @@
 pub mod dev;
 pub mod core;
 pub mod physics;
-pub mod network_transform;
+pub mod control;
 pub mod snapshot; 
 pub mod culling;
-pub mod character_movement_systems;
 pub mod net_builder;
 
 pub mod prelude {
     pub use crate::{
         core::*,
         physics::*,
-        network_transform::*,
+        control::*,
         snapshot::*,
         culling::*,
-        character_movement_systems::*,
         net_builder::*,
-        RepliconActionPlugin
+        *
     };
 }
 
+use std::marker::PhantomData;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
 use prelude::*;
 
-pub struct RepliconActionPlugin;
+pub struct NetworkBootPlugin {
+    pub transform_axis: TransformAxis,
+    pub interpolation_config: InterpolationConfig,
+    pub prediction_config: PredictionConfig,
+}
 
-impl Plugin for RepliconActionPlugin {
+impl Plugin for NetworkBootPlugin {
     fn build(&self, app: &mut App) {
-        app.use_player_entity_event()
+        app.insert_resource(self.transform_axis.clone())
+        .insert_resource(self.interpolation_config.clone())
+        .insert_resource(self.prediction_config.clone())
+        .configure_sets(PreUpdate, 
+            ClientBootSet::UnboxReplication
+            .after(ClientSet::Receive)
+        )
+        .configure_sets(PreUpdate, 
+            ClientBootSet::ApplyReplication
+            .after(ClientBootSet::UnboxReplication)
+        )
+        .configure_sets(FixedUpdate, 
+            ClientBootSet::Update
+            .before(BEFORE_PHYSICS_SET)
+        )
+        .configure_sets(PostUpdate, 
+            ClientBootSet::CacheLocalChange
+            .before(ClientSet::Send)
+        )
+        .configure_sets(PreUpdate, 
+            ServerBootSet::UnboxEvent
+            .after(ServerSet::Receive)
+        )
+        .configure_sets(FixedPreUpdate, 
+            ServerBootSet::CorrectReplication
+        )
+        .configure_sets(FixedUpdate, 
+            ServerBootSet::Update
+            .before(BEFORE_PHYSICS_SET)
+        )
+        .configure_sets(PostUpdate, 
+            ServerBootSet::Cache
+            .before(ServerSet::Send)
+        )
+        .configure_sets(FixedPostUpdate, 
+            ServerBootSet::ApplyLocalChange
+        )
+        .use_player_entity_event()
         .replicate::<NetworkEntity>();
+    }
+}
+
+pub struct NetworkTranslationPlugin<T, E>(PhantomData<T>, PhantomData<E>)
+where
+T: NetworkTranslation,
+E: NetworkMovement;
+
+impl<T, E> NetworkTranslationPlugin<T, E>
+where 
+T: NetworkTranslation,
+E: NetworkMovement {
+    fn new() -> Self {
+        Self(PhantomData::<T>, PhantomData::<E>)
+    }
+} 
+
+impl<T, E> Plugin for NetworkTranslationPlugin<T,E>
+where 
+T: NetworkTranslation,
+E: NetworkMovement {
+    fn build(&self, app: &mut App) {
+        app.replicate::<T>()
+        .add_plugins(ComponentSnapshotPlugin::<T>::new())
+        .add_server_event::<ForceReplicateTranslation<T>>(ChannelKind::Ordered);
+
+        if app.world.contains_resource::<RepliconServer>() {
+            app.add_systems(FixedPreUpdate,
+                correct_translation_error_system::<T, E>
+                .in_set(ServerBootSet::CorrectReplication)
+            )
+            .add_systems(FixedPostUpdate,
+                apply_transform_translation_system::<T>
+                .in_set(ServerBootSet::ApplyLocalChange)
+            );   
+        } else if app.world.contains_resource::<RepliconClient>() {
+            app.add_systems(PreUpdate, (
+                handle_correct_translation::<T>,
+                apply_network_translation_system::<T>
+            ).in_set(ClientBootSet::ApplyReplication))
+            .add_systems(PostUpdate, 
+                cache_translation_system::<T>
+                .in_set(ClientBootSet::CacheLocalChange)
+            );
+        } else {
+            panic!("could not find replicon server nor client");
+        }
+    }
+}
+
+pub struct NetworkRotationPlugin<R, E>(PhantomData<R>, PhantomData<E>)
+where 
+R: NetworkRotation,
+E: NetworkMovement;
+
+impl<R, E> NetworkRotationPlugin<R, E>
+where 
+R: NetworkRotation,
+E: NetworkMovement {
+    fn new() -> Self {
+        Self(PhantomData::<R>, PhantomData::<E>)
+    }
+} 
+
+impl<R, E> Plugin for NetworkRotationPlugin<R, E>
+where 
+R: NetworkRotation,
+E: NetworkMovement {
+    fn build(&self, app: &mut App) {
+        app.replicate::<R>()
+        .add_plugins(ComponentSnapshotPlugin::<R>::new())
+        .add_server_event::<ForceReplicateRotation<R>>(ChannelKind::Ordered);
+    
+        if app.world.contains_resource::<RepliconServer>() {
+            app.add_systems(FixedPreUpdate, 
+                correct_rotation_error_system::<R, E>
+                .in_set(ServerBootSet::CorrectReplication)
+            )
+            .add_systems(FixedPostUpdate, 
+                apply_transform_rotation_system::<R>
+                .in_set(ServerBootSet::ApplyLocalChange)
+            );
+        } else if app.world.contains_resource::<RepliconClient>() {
+            app.add_systems(PreUpdate, (
+                handle_correct_rotation::<R>,
+                apply_network_rotation_system::<R>
+            ).in_set(ClientBootSet::ApplyReplication))
+            .add_systems(PostUpdate,
+                cache_rotation_system::<R>
+                .in_set(ClientBootSet::CacheLocalChange)
+            );
+        } else {
+            panic!("could not find replicon server nor client");
+        }
     }
 }
 

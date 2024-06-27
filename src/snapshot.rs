@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use serde::{Serialize, de::DeserializeOwned};
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use crate::NetworkEvent;
+use crate::{ClientBootSet, NetworkEvent, ServerBootSet};
 
 pub use component_snapshot::*;
 pub use event_snapshot::*;
@@ -31,7 +31,7 @@ impl<E: NetworkEvent> Plugin for EventSnapshotPlugin<E> {
             app.add_client_event::<E>(self.channel_kind)
             .add_systems(PreUpdate, 
                 server_populate_client_event_snapshots::<E>
-                .after(ServerSet::Receive)    
+                .in_set(ServerBootSet::UnboxEvent)    
             );
         } else if app.world.contains_resource::<RepliconClient>() {
             app.add_client_event::<E>(self.channel_kind)
@@ -58,15 +58,14 @@ impl<C> Plugin for ComponentSnapshotPlugin<C>
 where C: Component + Serialize + DeserializeOwned + Clone {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
-            app.replicate::<C>()
-            .add_systems(PostUpdate,
+            app.add_systems(PostUpdate,
                 server_populate_component_snapshots::<C>
+                .in_set(ServerBootSet::Cache)
             );
         } else if app.world.contains_resource::<RepliconClient>() {
-            app.replicate::<C>()
-            .add_systems(PreUpdate, 
+            app.add_systems(PreUpdate, 
                 client_populate_component_snapshots::<C>
-                .after(ClientSet::Receive)
+                .in_set(ClientBootSet::UnboxReplication)
             );
         } else {
             panic!("could not find replicon server nor client");

@@ -1,4 +1,4 @@
-use bevy::utils::{Uuid, SystemTime};
+use bevy::{utils::{Uuid, SystemTime}, math::Vec3};
 
 pub const DEV_SERVER_TICK_RATE: f32 = 20.0;
 pub const DEV_SERVER_TICK_DELTA: f32 = 1.0 / DEV_SERVER_TICK_RATE;
@@ -71,3 +71,10 @@ pub fn get_dev_user_data() -> [u8; 256] {
     }
 }
 
+pub const PHYSICS_FIXED_TICK_RATE: f32 = 64.0;
+pub const PHYSICS_FIXED_TICK_DELTA: f32 = 1.0 / PHYSICS_FIXED_TICK_RATE;
+pub const PHYSICS_SUBSTEPS: usize = 6;
+
+pub const CHARACTER_HALF_HIGHT: f32 = 0.5;
+pub const CHARACTER_RADIUS: f32 = 0.5;
+pub const CHARACTER_SPAWN_POSITION: Vec3 = Vec3::new(0.0, 1.0, 0.0);

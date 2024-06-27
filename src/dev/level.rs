@@ -1,4 +1,5 @@
 use bevy::{math::vec3, prelude::*};
+use bevy_rapier3d::prelude::*;
 
 pub const FLOOR_SIZE: Vec3 = vec3(50.0, 1.0, 50.0);
 pub const FLOOR_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
@@ -12,12 +13,16 @@ pub fn setup_floor(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ) {
-    commands.spawn(PbrBundle{
-        mesh: meshes.add(Mesh::from(Cuboid::from_size(FLOOR_SIZE))),
-        material: materials.add(FLOOR_COLOR),
-        transform: Transform::from_translation(FLOOR_POSITION),
-        ..default()
-    });
+    let extents = FLOOR_SIZE * 0.5;
+    commands.spawn((
+        PbrBundle{
+            mesh: meshes.add(Mesh::from(Cuboid::from_size(FLOOR_SIZE))),
+            material: materials.add(FLOOR_COLOR),
+            transform: Transform::from_translation(FLOOR_POSITION),
+            ..default()
+        },
+        Collider::cuboid(extents.x, extents.y, extents.z)
+    ));
 }
 
 pub fn setup_light(mut commands: Commands) {

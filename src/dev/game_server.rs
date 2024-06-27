@@ -1,33 +1,21 @@
-use bevy::{
-    prelude::*, 
-    utils::Uuid
-};
-use bevy_replicon::{
-    prelude::*, 
-    server::server_tick::ServerTick
-};
+use anyhow::anyhow;
+use bevy::utils::Uuid;
+use bevy_replicon::server::server_tick::ServerTick;
 use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::ClientId as RenetClientId;
-use anyhow::anyhow;
-use crate::{
-    dev::{
-        config::*,
-        *
-    },
-    prelude::*
-};
+use bevy_rapier3d::prelude::*;
+use super::*;
 
 pub struct GameServerPlugin;
 
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(GameCommonPlugin)
-        .add_plugins(ReplicationCullingPlugin{
-            culling_threshold: DISTANCE_CULLING_THREASHOLD, 
-            auto_clean: true,
-            phantom: PhantomData::<NetworkTranslation2D>
-        })
-        .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
+        // .add_plugins(ReplicationCullingPlugin{
+        //     culling_threshold: DISTANCE_CULLING_THREASHOLD, 
+        //     auto_clean: true
+        // })
+        // .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
@@ -80,10 +68,10 @@ fn handle_player_entity_event(
         if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
             
-            let trans_bundle = match NetworkTranslationBundle
-            ::<NetworkTranslation2D>::new(
-                default(),
-                TranslationAxis::XZ, 
+            let net_trans_bundle = match NetworkTranslationBundle
+            ::<NetworkCharacterController>::new(
+                CHARACTER_SPAWN_POSITION,
+                default(), 
                 tick, 
                 DEV_MAX_UPDATE_SNAPSHOT_SIZE
             ) {
@@ -94,7 +82,7 @@ fn handle_player_entity_event(
                 }
             };
             
-            let rot_bundle = match NetworkRotationBundle
+            let net_rot_bundle = match NetworkRotationBundle
             ::<NetworkAngle>::new(
                 default(), 
                 RotationAxis::Z,
@@ -108,27 +96,28 @@ fn handle_player_entity_event(
                 }
             };
 
-            let movement_snaps = EventSnapshots::<NetworkMovement2D>
-            ::with_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE);
+            //let group = PlayerGroup::random();
+            //info!("player: {client_id:?} spawned for group: {}", group.id);
+            info!("player: {client_id:?} spawned");
 
-            let fire_snaps = EventSnapshots::<NetworkFire>
-            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-
-            let group = PlayerGroup::random();
-            let group_id = group.group;
-
-            commands.entity(*entity).insert((
+            commands.entity(*entity)
+            .insert((
                 PlayerPresentation::random(),
-                PlayerView,
-                Culling::<NetworkTranslation2D>::default(),
-                group,
-                trans_bundle,
-                rot_bundle,
-                movement_snaps,
-                fire_snaps
+                //PlayerView,
+                //Culling::default(),
+                //group,
+                TransformBundle::from_transform(
+                    Transform::from_translation(CHARACTER_SPAWN_POSITION)
+                ),
+                CharacterControllerBundle::default(),
+                Collider::capsule_y(CHARACTER_HALF_HIGHT, CHARACTER_RADIUS),
+                net_trans_bundle,
+                net_rot_bundle,
+                EventSnapshots::<NetworkMovement2_5D>
+                ::with_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE),
+                EventSnapshots::<NetworkFire>
+                ::with_capacity(DEV_MAX_SNAPSHOT_SIZE)
             ));
-
-            info!("player: {client_id:?} spawned for group: {group_id}");
         }
     }
 }
@@ -140,7 +129,7 @@ fn handle_fire(
     )>,
     query: Query<(
         &NetworkEntity, 
-        &ComponentSnapshots<NetworkTranslation2D>
+        &ComponentSnapshots<NetworkCharacterController>
     )>,
 ) {
     for (shooter, mut fire_snaps) in shooters.iter_mut() {
