@@ -54,8 +54,13 @@ impl Plugin for NetworkBootPlugin {
             ServerBootSet::UnboxEvent
             .after(ServerSet::Receive)
         )
-        .configure_sets(FixedPreUpdate, 
+        .configure_sets(PreUpdate, 
+            ServerBootSet::PlayerEntityEvent
+            .after(ServerSet::Receive)
+        )
+        .configure_sets(PreUpdate, 
             ServerBootSet::CorrectReplication
+            .after(ServerBootSet::UnboxEvent)
         )
         .configure_sets(FixedUpdate, 
             ServerBootSet::Update
@@ -65,8 +70,9 @@ impl Plugin for NetworkBootPlugin {
             ServerBootSet::Cache
             .before(ServerSet::Send)
         )
-        .configure_sets(FixedPostUpdate, 
+        .configure_sets(PostUpdate, 
             ServerBootSet::ApplyLocalChange
+            .before(ServerBootSet::Cache)
         )
         .add_plugins(PlayerEntityEventPlugin)
         .replicate::<NetworkEntity>();
@@ -82,7 +88,7 @@ impl Plugin for PlayerEntityEventPlugin {
             .add_event::<PlayerEntityEvent>()
             .add_systems(PreUpdate, 
                 player_entity_event_system
-                .in_set(ServerBootSet::UnboxEvent)
+                .in_set(ServerBootSet::PlayerEntityEvent)
             );
         } else if app.world.contains_resource::<RepliconClient>() {
             
@@ -117,11 +123,11 @@ E: NetworkMovement {
         .add_server_event::<ForceReplicateTranslation<T>>(ChannelKind::Ordered);
 
         if app.world.contains_resource::<RepliconServer>() {
-            app.add_systems(FixedPreUpdate,
+            app.add_systems(PreUpdate,
                 correct_translation_error_system::<T, E>
                 .in_set(ServerBootSet::CorrectReplication)
             )
-            .add_systems(FixedPostUpdate,
+            .add_systems(PostUpdate,
                 apply_transform_translation_system::<T>
                 .in_set(ServerBootSet::ApplyLocalChange)
             );   

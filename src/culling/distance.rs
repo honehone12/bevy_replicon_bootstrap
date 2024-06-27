@@ -180,7 +180,7 @@ impl Plugin for ReplicationCullingPlugin {
             if self.auto_clean {
                 app.add_systems(PreUpdate, 
                     handle_player_entity_event
-                    .after(ServerBootSet::UnboxEvent)
+                    .after(ServerBootSet::PlayerEntityEvent)
                 );
             }
         } else {
