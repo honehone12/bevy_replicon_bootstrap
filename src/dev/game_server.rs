@@ -11,11 +11,11 @@ pub struct GameServerPlugin;
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(GameCommonPlugin)
-        // .add_plugins(ReplicationCullingPlugin{
-        //     culling_threshold: DISTANCE_CULLING_THREASHOLD, 
-        //     auto_clean: true
-        // })
-        // .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
+        .add_plugins(ReplicationCullingPlugin{
+            culling_threshold: DISTANCE_CULLING_THREASHOLD, 
+            auto_clean: true
+        })
+        .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
@@ -96,16 +96,15 @@ fn handle_player_entity_event(
                 }
             };
 
-            //let group = PlayerGroup::random();
-            //info!("player: {client_id:?} spawned for group: {}", group.id);
-            info!("player: {client_id:?} spawned");
-
+            let group = PlayerGroup::default();
+            info!("player: {client_id:?} spawned for group: {}", group.group);
+        
             commands.entity(*entity)
             .insert((
                 PlayerPresentation::random(),
-                //PlayerView,
-                //Culling::default(),
-                //group,
+                PlayerView,
+                Culling::default(),
+                group,
                 TransformBundle::from_transform(
                     Transform::from_translation(CHARACTER_SPAWN_POSITION)
                 ),
