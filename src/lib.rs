@@ -68,8 +68,27 @@ impl Plugin for NetworkBootPlugin {
         .configure_sets(FixedPostUpdate, 
             ServerBootSet::ApplyLocalChange
         )
-        .use_player_entity_event()
+        .add_plugins(PlayerEntityEventPlugin)
         .replicate::<NetworkEntity>();
+    }
+}
+
+pub struct PlayerEntityEventPlugin;
+
+impl Plugin for PlayerEntityEventPlugin {
+    fn build(&self, app: &mut App) {
+        if app.world.contains_resource::<RepliconServer>() {
+            app.insert_resource(PlayerEntitiesMap::default())
+            .add_event::<PlayerEntityEvent>()
+            .add_systems(PreUpdate, 
+                player_entity_event_system
+                .in_set(ServerBootSet::UnboxEvent)
+            );
+        } else if app.world.contains_resource::<RepliconClient>() {
+            
+        } else {
+            panic!("could not find replicon server nor client");
+        }
     }
 }
 
@@ -82,6 +101,7 @@ impl<T, E> NetworkTranslationPlugin<T, E>
 where 
 T: NetworkTranslation,
 E: NetworkMovement {
+    #[inline]
     fn new() -> Self {
         Self(PhantomData::<T>, PhantomData::<E>)
     }
@@ -129,6 +149,7 @@ impl<R, E> NetworkRotationPlugin<R, E>
 where 
 R: NetworkRotation,
 E: NetworkMovement {
+    #[inline]
     fn new() -> Self {
         Self(PhantomData::<R>, PhantomData::<E>)
     }
@@ -167,10 +188,32 @@ E: NetworkMovement {
     }
 }
 
+pub struct ClientEventPlugin<E: NetworkEvent>{
+    pub channel_kind: ChannelKind,
+    phantom: PhantomData<E>
+}
+
+impl<E: NetworkEvent> ClientEventPlugin<E> {
+    #[inline]
+    pub fn new(channel_kind: ChannelKind) -> Self {
+        Self { 
+            channel_kind, 
+            phantom: PhantomData::<E> 
+        }
+    }
+}
+
+impl<E: NetworkEvent> Plugin for ClientEventPlugin<E> {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(EventSnapshotPlugin::<E>::new())
+        .add_client_event::<E>(self.channel_kind);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
     fn unimplemented_test() {
-        unimplemented!("tests are not ready");
+        unimplemented!("can you help me ??");
     }
 }

@@ -60,9 +60,6 @@ impl PlayerEntitiesMap {
     }
 }
 
-#[derive(SystemSet, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct PlayerEntityEventSet;
-
 #[derive(Event)]
 pub enum PlayerEntityEvent {
     Spawned {
@@ -75,7 +72,7 @@ pub enum PlayerEntityEvent {
     }
 }
 
-fn handle_server_event(
+pub(crate) fn player_entity_event_system(
     mut commands: Commands,
     mut server_evetns: EventReader<ServerEvent>,
     mut player_entity_events: EventWriter<PlayerEntityEvent>, 
@@ -122,28 +119,3 @@ fn handle_server_event(
         }
     }
 } 
-
-pub trait PlayerEntityAppExt {
-    fn use_player_entity_event(&mut self) -> &mut Self;
-}
-
-impl PlayerEntityAppExt for App {
-    fn use_player_entity_event(&mut self) -> &mut Self {
-        if self.world.contains_resource::<RepliconServer>() {
-            self.configure_sets(PreUpdate, 
-                PlayerEntityEventSet
-                .after(ServerSet::Receive)
-            )
-            .insert_resource(PlayerEntitiesMap::default())
-            .add_event::<PlayerEntityEvent>()
-            .add_systems(PreUpdate, 
-                handle_server_event
-                .after(PlayerEntityEventSet)
-            )
-        } else if self.world.contains_resource::<RepliconClient>() {
-            self
-        } else {
-            panic!("could not find replicon server nor client");
-        }
-    }
-}

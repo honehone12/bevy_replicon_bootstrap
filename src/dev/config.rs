@@ -16,7 +16,7 @@ pub const DEV_MAX_UPDATE_SNAPSHOT_SIZE: usize = 2560;
 pub const DEV_MAX_SNAPSHOT_SIZE: usize = 64;
 
 pub const BASE_SPEED: f32 = 10.0;
-pub const BASE_ANGULAR_SPEED: f32 = 10.0; 
+pub const BASE_ANGULAR_SPEED: f32 = 5.0; 
 
 // (network delata time / local delta time * base speed * local delta time)^2
 // bevy's fixed update = 64hz
@@ -26,7 +26,7 @@ pub const ROTATION_ERROR_THRESHOLD: f32 = 10.0;
 // 1sec / network tick
 pub const PREDICTION_ERROR_COUNT_THRESHOLD: u32 = 10;
 
-pub const DISTANCE_CULLING_THREASHOLD: f32 = 100.0;
+pub const DISTANCE_CULLING_THREASHOLD: f32 = 50.0;
 
 pub fn get_dev_protocol_id() -> u64 {
     if cfg!(debug_assertions) {

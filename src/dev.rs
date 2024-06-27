@@ -51,8 +51,8 @@ impl Plugin for GameCommonPlugin {
                 NetworkMovement2_5D
             >::new(),
 
-            EventSnapshotPlugin::<NetworkMovement2_5D>::new(ChannelKind::Unreliable),
-            EventSnapshotPlugin::<NetworkFire>::new(ChannelKind::Ordered),
+            ClientEventPlugin::<NetworkMovement2_5D>::new(ChannelKind::Unreliable),
+            ClientEventPlugin::<NetworkFire>::new(ChannelKind::Ordered),
         ))
         .replicate::<PlayerPresentation>()
         .add_systems(FixedUpdate,

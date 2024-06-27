@@ -10,32 +10,24 @@ use crate::{ClientBootSet, NetworkEvent, ServerBootSet};
 pub use component_snapshot::*;
 pub use event_snapshot::*;
 
-pub struct EventSnapshotPlugin<E: NetworkEvent>{
-    pub channel_kind: ChannelKind,
-    phantom: PhantomData<E>
-}
+pub struct EventSnapshotPlugin<E: NetworkEvent>(PhantomData<E>);
 
 impl<E: NetworkEvent> EventSnapshotPlugin<E> {
     #[inline]
-    pub fn new(channel_kind: ChannelKind) -> Self {
-        Self { 
-            channel_kind, 
-            phantom: PhantomData::<E> 
-        }
+    pub fn new() -> Self {
+        Self(PhantomData::<E>)
     }
 } 
 
 impl<E: NetworkEvent> Plugin for EventSnapshotPlugin<E> {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
-            app.add_client_event::<E>(self.channel_kind)
-            .add_systems(PreUpdate, 
+            app.add_systems(PreUpdate, 
                 server_populate_client_event_snapshots::<E>
                 .in_set(ServerBootSet::UnboxEvent)    
             );
         } else if app.world.contains_resource::<RepliconClient>() {
-            app.add_client_event::<E>(self.channel_kind)
-            .add_systems(PostUpdate, 
+            app.add_systems(PostUpdate, 
                 client_populate_client_event_snapshots::<E>
             );
         } else {

@@ -143,7 +143,7 @@ impl<G: RelevantGroup> Plugin for RelevancyPlugin<G> {
             app.insert_resource(RelevancyMap::<G>::default())
             .add_systems(PreUpdate, 
                 handle_player_entity_event::<G>
-                .after(PlayerEntityEventSet))
+                .after(ServerBootSet::UnboxEvent))
             .add_systems(PostUpdate, (
                 relevancy_mapping_system::<G>,
                 relevancy_culling_system::<G>
