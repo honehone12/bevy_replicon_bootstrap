@@ -220,10 +220,8 @@ fn handle_player_spawned(
             .insert((
                 Owning,
                 CharacterControllerBundle::default(),
-                EventSnapshots::<NetworkFire>
-                ::with_capacity(DEV_MAX_SNAPSHOT_SIZE),
-                EventSnapshots::<NetworkMovement2_5D>
-                ::with_capacity(DEV_MAX_SNAPSHOT_SIZE)
+                EventSnapshots::<NetworkFire>::with_capacity(DEV_MAX_SNAPSHOT_SIZE),
+                EventSnapshots::<NetworkMovement2_5D>::with_capacity(DEV_MAX_SNAPSHOT_SIZE)
             ));
         } else {
             commands.entity(e)

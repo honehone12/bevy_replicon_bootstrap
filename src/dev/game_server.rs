@@ -95,10 +95,12 @@ fn handle_player_entity_event(
                     tick, 
                     DEV_MAX_UPDATE_SNAPSHOT_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
-                EventSnapshots::<NetworkMovement2_5D>
-                ::with_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE),
-                EventSnapshots::<NetworkFire>
-                ::with_capacity(DEV_MAX_SNAPSHOT_SIZE)
+                EventSnapshots::<NetworkMovement2_5D>::with_capacity(
+                    DEV_MAX_UPDATE_SNAPSHOT_SIZE
+                ),
+                EventSnapshots::<NetworkFire>::with_capacity(
+                    DEV_MAX_SNAPSHOT_SIZE
+                )
             ));
         }
     }
