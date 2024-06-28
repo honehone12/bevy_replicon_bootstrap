@@ -41,6 +41,7 @@ where C: Component + Serialize + DeserializeOwned + Clone;
 
 impl<C> ComponentSnapshotPlugin<C>
 where C: Component + Serialize + DeserializeOwned + Clone {
+    #[inline]
     pub fn new() -> Self {
         Self(PhantomData::<C>)
     }

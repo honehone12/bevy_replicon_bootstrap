@@ -10,11 +10,14 @@ pub struct GameServerPlugin;
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(GameCommonPlugin)
-        .add_plugins(DistanceCullingPlugin{
-            culling_threshold: DISTANCE_CULLING_THREASHOLD, 
-            auto_clean: true
-        })
-        .add_plugins(RelevantGroupPlugin(PhantomData::<PlayerGroup>))
+        .add_plugins((
+            DefaultPlayerEntityEventPlugin,
+            DistanceCullingPlugin{
+                culling_threshold: DISTANCE_CULLING_THREASHOLD, 
+                auto_clean: true
+            },
+            RelevantGroupPlugin::<PlayerGroup>::new()
+        ))
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,

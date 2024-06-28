@@ -135,7 +135,14 @@ fn relevancy_culling_system<G: RelevantGroup>(
     }
 }
 
-pub struct RelevantGroupPlugin<G: RelevantGroup>(pub PhantomData<G>);
+pub struct RelevantGroupPlugin<G: RelevantGroup>(PhantomData<G>);
+
+impl<G: RelevantGroup> RelevantGroupPlugin<G> {
+    #[inline]
+    pub fn new() -> Self {
+        Self(PhantomData::<G>)
+    }
+} 
 
 impl<G: RelevantGroup> Plugin for RelevantGroupPlugin<G> {
     fn build(&self, app: &mut App) {
