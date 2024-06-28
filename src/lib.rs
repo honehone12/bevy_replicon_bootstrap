@@ -74,14 +74,13 @@ impl Plugin for NetworkBootPlugin {
             ServerBootSet::ApplyLocalChange
             .before(ServerBootSet::Cache)
         )
-        .add_plugins(PlayerEntityEventPlugin)
         .replicate::<NetworkEntity>();
     }
 }
 
-pub struct PlayerEntityEventPlugin;
+pub struct DefaultPlayerEntityEventPlugin;
 
-impl Plugin for PlayerEntityEventPlugin {
+impl Plugin for DefaultPlayerEntityEventPlugin {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
             app.insert_resource(PlayerEntitiesMap::default())
@@ -91,8 +90,6 @@ impl Plugin for PlayerEntityEventPlugin {
                 .in_set(ServerBootSet::PlayerEntityEvent)
             );
         } else if app.world.contains_resource::<RepliconClient>() {
-            
-        } else {
             panic!("could not find replicon server nor client");
         }
     }

@@ -36,6 +36,7 @@ impl Plugin for GameCommonPlugin {
                     force_replicate_error_count: PREDICTION_ERROR_COUNT_THRESHOLD 
                 },
             },
+            DefaultPlayerEntityEventPlugin,
             Rapier3DPlugin{
                 delta_time: PHYSICS_FIXED_TICK_DELTA,
                 substeps: PHYSICS_SUBSTEPS
