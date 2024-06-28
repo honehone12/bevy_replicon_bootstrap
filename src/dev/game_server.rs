@@ -1,8 +1,7 @@
-use anyhow::anyhow;
 use bevy::utils::Uuid;
 use bevy_replicon::server::server_tick::ServerTick;
 use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
-use bevy_replicon_renet::renet::ClientId as RenetClientId;
+use bevy_replicon_renet::renet::{ClientId as RenetClientId, RenetServer};
 use bevy_rapier3d::prelude::*;
 use super::*;
 
@@ -28,16 +27,18 @@ impl Plugin for GameServerPlugin {
 fn handle_server_event(
     mut events: EventReader<ServerEvent>,
     netcode_server: Res<NetcodeServerTransport>,
+    mut renet_server: ResMut<RenetServer>
 ) {
     for e in events.read() {
         match e {
             ServerEvent::ClientConnected { client_id } => {
-                let user_data = match netcode_server.user_data(
-                    RenetClientId::from_raw(client_id.get())
-                ) {
+                let renet_client_id = RenetClientId::from_raw(client_id.get());
+                
+                let user_data = match netcode_server.user_data(renet_client_id) {
                     Some(u) => u,
                     None => {
-                        error(anyhow!("no user data for client: {}", client_id.get()));
+                        warn!("no user data for client: {:?}", client_id);
+                        renet_server.disconnect(renet_client_id);
                         return;
                     }
                 };
@@ -45,7 +46,8 @@ fn handle_server_event(
                 let uuid = match Uuid::from_slice(&user_data[0..16]) {
                     Ok(u) => u,
                     Err(e) => {
-                        error(e.into());
+                        warn!("malformatted uuid for client: {:?}: {e}", client_id);
+                        renet_server.disconnect(renet_client_id);
                         return;
                     }
                 };
@@ -67,35 +69,6 @@ fn handle_player_entity_event(
     for e in events.read() {
         if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
-            
-            let net_trans_bundle = match NetworkTranslationBundle
-            ::<NetworkCharacterController>::new(
-                CHARACTER_SPAWN_POSITION,
-                default(), 
-                tick, 
-                DEV_MAX_UPDATE_SNAPSHOT_SIZE
-            ) {
-                Ok(b) => b,
-                Err(e) => {
-                    error(e.into());
-                    return;
-                }
-            };
-            
-            let net_rot_bundle = match NetworkRotationBundle
-            ::<NetworkAngle>::new(
-                default(), 
-                RotationAxis::Z,
-                tick, 
-                DEV_MAX_UPDATE_SNAPSHOT_SIZE
-            ) {
-                Ok(b) => b,
-                Err(e) => {
-                    error(e.into());
-                    return;
-                }
-            };
-
             let group = PlayerGroup::random();
             info!("player: {client_id:?} spawned for group: {}", group.group);
         
@@ -110,8 +83,18 @@ fn handle_player_entity_event(
                 ),
                 CharacterControllerBundle::default(),
                 Collider::capsule_y(CHARACTER_HALF_HIGHT, CHARACTER_RADIUS),
-                net_trans_bundle,
-                net_rot_bundle,
+                NetworkTranslationBundle::<NetworkCharacterController>::new(
+                    CHARACTER_SPAWN_POSITION,
+                    default(), 
+                    tick, 
+                    DEV_MAX_UPDATE_SNAPSHOT_SIZE
+                ).expect("sytem time looks earlier than unix epoch"),
+                NetworkRotationBundle::<NetworkAngle>::new(
+                    default(), 
+                    RotationAxis::Z,
+                    tick, 
+                    DEV_MAX_UPDATE_SNAPSHOT_SIZE
+                ).expect("sytem time looks earlier than unix epoch"),
                 EventSnapshots::<NetworkMovement2_5D>
                 ::with_capacity(DEV_MAX_UPDATE_SNAPSHOT_SIZE),
                 EventSnapshots::<NetworkFire>

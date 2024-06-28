@@ -122,14 +122,10 @@ fn handle_action(
 ) {
     if let Ok(transform) = query.get_single() {
         for (a, event_id) in actions.read_with_id() {
-            let timestamp = match SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH) {
-                Ok(d) => d.as_secs_f64(),
-                Err(e) => {
-                    error(e.into());
-                    return;
-                }
-            };
+            let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("sytem time looks earlier than unix epoch")
+            .as_secs_f64();
 
             if a.has_movement() {
                 let mut bits = 0;
@@ -188,26 +184,6 @@ fn handle_player_spawned(
     ) in query.iter() {
         let tick = confirmed_tick.last_tick()
         .get();
-        
-        let mut net_trans_snaps = ComponentSnapshots
-        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-        match net_trans_snaps.insert(*net_trans, tick) {
-            Ok(()) => (),
-            Err(e) => {
-                error(e.into());
-                return;
-            }
-        }
-        
-        let mut net_rot_snaps = ComponentSnapshots
-        ::with_capacity(DEV_MAX_SNAPSHOT_SIZE); 
-        match net_rot_snaps.insert(*net_rot, tick) {
-            Ok(()) => (),
-            Err(e) => {
-                error(e.into());
-                return;
-            }
-        }
 
         commands.entity(e)
         .insert((
@@ -226,23 +202,28 @@ fn handle_player_spawned(
             },
 
             Collider::capsule_y(CHARACTER_HALF_HIGHT, CHARACTER_RADIUS),
-            net_trans_snaps,
-            net_rot_snaps
+            ComponentSnapshots::with_init(
+                *net_trans, 
+                tick, 
+                DEV_MAX_SNAPSHOT_SIZE
+            ).expect("sytem time looks earlier than unix epoch"),
+            ComponentSnapshots::with_init(
+                *net_rot, 
+                tick, 
+                DEV_MAX_SNAPSHOT_SIZE
+            ).expect("sytem time looks earlier than unix epoch")
         ));
 
         if net_e.client_id()
         .get() == client.id() {
-            let movement_snaps = EventSnapshots::<NetworkMovement2_5D>
-            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-            let fire_snaps = EventSnapshots::<NetworkFire>
-            ::with_capacity(DEV_MAX_SNAPSHOT_SIZE);
-            
             commands.entity(e)
             .insert((
                 Owning,
                 CharacterControllerBundle::default(),
-                movement_snaps,
-                fire_snaps
+                EventSnapshots::<NetworkFire>
+                ::with_capacity(DEV_MAX_SNAPSHOT_SIZE),
+                EventSnapshots::<NetworkMovement2_5D>
+                ::with_capacity(DEV_MAX_SNAPSHOT_SIZE)
             ));
         } else {
             commands.entity(e)

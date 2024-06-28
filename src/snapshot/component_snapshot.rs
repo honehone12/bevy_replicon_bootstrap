@@ -61,6 +61,16 @@ impl<C: Component> ComponentSnapshots<C> {
     }
 
     #[inline]
+    pub fn with_init(init: C, tick: u32, cache_size: usize) 
+    -> anyhow::Result::<Self> {
+        let mut snaps = Self::with_capacity(cache_size);
+        match snaps.insert(init, tick) {
+            Ok(()) => Ok(snaps),
+            Err(e) => Err(e) 
+        }
+    }
+
+    #[inline]
     pub fn frontier_len(&self) -> usize {
         self.frontier.len()
     }

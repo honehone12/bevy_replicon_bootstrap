@@ -210,7 +210,3 @@ pub fn handle_transport_error(mut errors: EventReader<NetcodeTransportError>) {
         panic!("{e}")
     }
 }
-
-pub fn error(error: anyhow::Error) {
-    panic!("{error}");
-}
