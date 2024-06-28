@@ -226,6 +226,10 @@ pub fn linear_interpolate_by_time<C: LinearInterpolatable>(
     snaps: &ComponentSnapshots<C>,
     network_tick_delta: f64
 ) -> anyhow::Result<Option<C>> {
+    if network_tick_delta <= 0.0 {
+        bail!("invalid network tick delta");
+    }
+
     if snaps.frontier_len() < 2 {
         return Ok(None)
     }
@@ -240,12 +244,17 @@ pub fn linear_interpolate_by_time<C: LinearInterpolatable>(
     .duration_since(SystemTime::UNIX_EPOCH)?
     .as_secs_f64();
     let elapsed = now - latest.timestamp();
+    if elapsed < 0.0 {
+        bail!("latest snapshot is future");
+    }
     
     // network tick delta time = 100%
     // elapsed = ?%
     // into 0.0 ~ 1.0
 
-    // become 1.0
+    // become 1.0 or over
+      // if we don't return here this can be extrapolation.
+      // but we are not sure should do or not 
     if elapsed >= network_tick_delta {
         return Ok(Some(
             latest.component()
@@ -253,8 +262,7 @@ pub fn linear_interpolate_by_time<C: LinearInterpolatable>(
         ));
     }
     
-    let per = (elapsed / network_tick_delta)
-    .clamp(0.0, 1.0) as f32;
+    let per = (elapsed / network_tick_delta) as f32;
     let second = iter.next().unwrap();
 
     let interpolated = second
