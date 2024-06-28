@@ -3,7 +3,7 @@ use bevy_replicon::{
     prelude::*, 
     server::server_tick::ServerTick
 };
-use super::{ee_map::*, CullingSet};
+use super::ee_map::*;
 use crate::core::*;
 
 #[derive(Component)]
@@ -23,6 +23,7 @@ pub enum Culling {
 }
 
 impl Default for Culling {
+    #[inline]
     fn default() -> Self {
         Self::Default
     }
@@ -154,19 +155,15 @@ fn handle_player_entity_event(
 }
 
 #[derive(Default)]
-pub struct ReplicationCullingPlugin {
+pub struct DistanceCullingPlugin {
     pub culling_threshold: f32,
     pub auto_clean: bool
 }
 
-impl Plugin for ReplicationCullingPlugin {
+impl Plugin for DistanceCullingPlugin {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
-            app.configure_sets(PostUpdate, 
-                CullingSet
-                .before(ServerSet::Send)
-            )
-            .insert_resource(DistanceMap::default())
+            app.insert_resource(DistanceMap::default())
             .insert_resource(CullingConfig{
                 culling_threshold: self.culling_threshold,
                 clean_up_on_disconnect: self.auto_clean
@@ -175,7 +172,7 @@ impl Plugin for ReplicationCullingPlugin {
                 calculate_distance_system,
                 culling_system
             ).chain(
-            ).in_set(CullingSet));
+            ).in_set(ServerBootSet::Culling));
 
             if self.auto_clean {
                 app.add_systems(PreUpdate, 

@@ -11,11 +11,11 @@ pub struct GameServerPlugin;
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(GameCommonPlugin)
-        .add_plugins(ReplicationCullingPlugin{
+        .add_plugins(DistanceCullingPlugin{
             culling_threshold: DISTANCE_CULLING_THREASHOLD, 
             auto_clean: true
         })
-        .add_plugins(RelevancyPlugin(PhantomData::<PlayerGroup>))
+        .add_plugins(RelevantGroupPlugin(PhantomData::<PlayerGroup>))
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
@@ -96,7 +96,7 @@ fn handle_player_entity_event(
                 }
             };
 
-            let group = PlayerGroup::default();
+            let group = PlayerGroup::random();
             info!("player: {client_id:?} spawned for group: {}", group.group);
         
             commands.entity(*entity)

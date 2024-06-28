@@ -67,6 +67,14 @@ impl Plugin for NetworkBootPlugin {
             .before(BEFORE_PHYSICS_SET)
         )
         .configure_sets(PostUpdate, 
+            ServerBootSet::Grouping
+            .before(ServerSet::Send)
+        )
+        .configure_sets(PostUpdate, 
+            ServerBootSet::Culling
+            .before(ServerBootSet::Grouping)
+        )
+        .configure_sets(PostUpdate, 
             ServerBootSet::Cache
             .before(ServerSet::Send)
         )
@@ -89,8 +97,8 @@ impl Plugin for DefaultPlayerEntityEventPlugin {
                 player_entity_event_system
                 .in_set(ServerBootSet::PlayerEntityEvent)
             );
-        } else if app.world.contains_resource::<RepliconClient>() {
-            panic!("could not find replicon server nor client");
+        } else {
+            panic!("could not find replicon server");
         }
     }
 }

@@ -6,6 +6,8 @@ pub enum ServerBootSet {
     PlayerEntityEvent,
     CorrectReplication,
     Update,
+    Culling,
+    Grouping,
     ApplyLocalChange,
     Cache
 }

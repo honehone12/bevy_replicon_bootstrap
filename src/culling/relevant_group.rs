@@ -4,7 +4,7 @@ use bevy_replicon::{
     prelude::*,
     server::server_tick::ServerTick
 };
-use super::{ee_map::*, CullingSet};
+use super::ee_map::*;
 use crate::core::*;
 
 pub trait RelevantGroup: Component + Default {
@@ -135,9 +135,9 @@ fn relevancy_culling_system<G: RelevantGroup>(
     }
 }
 
-pub struct RelevancyPlugin<G: RelevantGroup>(pub PhantomData<G>);
+pub struct RelevantGroupPlugin<G: RelevantGroup>(pub PhantomData<G>);
 
-impl<G: RelevantGroup> Plugin for RelevancyPlugin<G> {
+impl<G: RelevantGroup> Plugin for RelevantGroupPlugin<G> {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
             app.insert_resource(RelevancyMap::<G>::default())
@@ -148,11 +148,9 @@ impl<G: RelevantGroup> Plugin for RelevancyPlugin<G> {
                 relevancy_mapping_system::<G>,
                 relevancy_culling_system::<G>
             ).chain(
-            ).after(CullingSet
-            ).before(ServerSet::Send)
-            );
+            ).in_set(ServerBootSet::Grouping));
         } else {
-            panic!("could not find replicon server nor client");
+            panic!("could not find replicon server");
         }
     }
 }

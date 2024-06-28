@@ -7,12 +7,12 @@ use bevy::{
     log::{Level, LogPlugin}, 
     prelude::*
 };
+use bevy_replicon::prelude::*;
 use bevy_replicon_bootstrap::{
     prelude::*,
     dev::game_server::*, 
     dev::config::*
 };
-use bevy_replicon::prelude::*;
 
 fn main() {
     let mut app = App::new();
@@ -48,5 +48,4 @@ fn main() {
             panic!("{e}");
         }
     }
-    
 }
