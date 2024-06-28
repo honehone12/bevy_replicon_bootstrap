@@ -170,7 +170,7 @@ pub fn update_character_controller_system(
                 let mut angle = movement.rotation_axis.x;
                 angle *= params.base_angular_speed * time.delta_seconds();
 
-                transform.rotate_y(angle.to_radians());
+                transform.rotate_y(-angle.to_radians());
             }
 
             if movement.linear_axis != Vec2::ZERO {
