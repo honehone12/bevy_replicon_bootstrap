@@ -4,6 +4,7 @@ pub mod player_entity;
 pub mod interpolation;
 pub mod prediction;
 pub mod boot_system_set;
+pub mod player_start_line;
 
 pub use network_entity::*;
 pub use network_event::*;
@@ -11,6 +12,7 @@ pub use player_entity::*;
 pub use interpolation::*;
 pub use prediction::*;
 pub use boot_system_set::*;
+pub use player_start_line::*;
 
 use serde::{Serialize, de::DeserializeOwned};
 use bevy::prelude::*;

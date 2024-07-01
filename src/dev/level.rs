@@ -1,5 +1,6 @@
-use bevy::{math::vec3, prelude::*};
+use bevy::{math::{vec3, Quat}, prelude::*};
 use bevy_rapier3d::prelude::*;
+use crate::core::PlayerStart;
 
 pub const FLOOR_SIZE: Vec3 = vec3(50.0, 1.0, 50.0);
 pub const FLOOR_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
@@ -47,3 +48,25 @@ pub fn setup_fixed_camera(mut commands: Commands) {
         ..default()
     });
 }
+
+pub const SPAWN_POSITION_0: Vec3 = vec3(-25.0, 1.0, -25.0);
+pub const SPAWN_POSITION_1: Vec3 = vec3(25.0, 1.0, -25.0);
+pub const SPAWN_POSITION_2: Vec3 = vec3(25.0, 1.0, 25.0);
+pub const SPAWN_POSITION_3: Vec3 = vec3(-25.0, 1.0, 25.0);
+
+pub const PLAYER_START_0: PlayerStart = PlayerStart{
+    translation: SPAWN_POSITION_0,
+    rotation: Quat::IDENTITY
+};
+pub const PLAYER_START_1: PlayerStart = PlayerStart{
+    translation: SPAWN_POSITION_1,
+    rotation: Quat::IDENTITY
+};
+pub const PLAYER_START_2: PlayerStart = PlayerStart{
+    translation: SPAWN_POSITION_2,
+    rotation: Quat::IDENTITY
+};
+pub const PLAYER_START_3: PlayerStart = PlayerStart{
+    translation: SPAWN_POSITION_3,
+    rotation: Quat::IDENTITY
+};

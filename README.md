@@ -1,6 +1,6 @@
 ### Networking bootstrap on top of bevy_replicon  
 
-implementing basic sets of netcodes.
+implementing basic sets for netcodes.
 - game code agnostic systems backed by component and event snapshot cache
   - client prediction
   - interpolation

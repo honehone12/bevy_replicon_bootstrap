@@ -3,13 +3,23 @@ use bevy_replicon::server::server_tick::ServerTick;
 use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::{ClientId as RenetClientId, RenetServer};
 use bevy_rapier3d::prelude::*;
+use level::*;
 use super::*;
 
 pub struct GameServerPlugin;
 
 impl Plugin for GameServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(GameCommonPlugin)
+        app.insert_resource(
+            PlayerStartLines::new()
+            .with_group(vec![
+                PLAYER_START_0,
+                PLAYER_START_1,
+                PLAYER_START_2,
+                PLAYER_START_3
+            ])
+        )
+        .add_plugins(GameCommonPlugin)
         .add_plugins((
             DefaultPlayerEntityEventPlugin,
             DistanceCullingPlugin{
@@ -67,12 +77,15 @@ fn handle_server_event(
 fn handle_player_entity_event(
     mut commands: Commands,
     mut events: EventReader<PlayerEntityEvent>,
+    mut start_lines: ResMut<PlayerStartLines>,
     server_tick: Res<ServerTick>,
 ) {
     for e in events.read() {
         if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
             let group = PlayerGroup::random();
+            let player_start = start_lines.next(0)
+            .expect("missing player start lines initialization");
             info!("player: {client_id:?} spawned for group: {}", group.group);
         
             commands.entity(*entity)
@@ -82,12 +95,12 @@ fn handle_player_entity_event(
                 Culling::default(),
                 group,
                 TransformBundle::from_transform(
-                    Transform::from_translation(CHARACTER_SPAWN_POSITION)
+                    Transform::from_translation(player_start.translation)
                 ),
                 CharacterControllerBundle::default(),
                 Collider::capsule_y(CHARACTER_HALF_HIGHT, CHARACTER_RADIUS),
                 NetworkTranslationBundle::<NetworkCharacterController>::new(
-                    CHARACTER_SPAWN_POSITION,
+                    player_start.translation,
                     default(), 
                     tick, 
                     DEV_MAX_UPDATE_SNAPSHOT_SIZE
