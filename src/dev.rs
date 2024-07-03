@@ -247,16 +247,19 @@ pub fn apply_gravity_system(
         let mass = cc.custom_mass.unwrap_or(1.0);
         let g = GRAVITY * mass * delta_time;
 
-        let d = jump.power * delta_time + g;
+        let dy = jump.power * delta_time + g;
         jump.power += g;
         if jump.grounded && jump.power < 0.0 {
             jump.power = 0.0;
         }
 
-        match cc.translation {
-            Some(mut v) => v.y += d,
-            None => cc.translation = Some(Vec3::new(0.0, d, 0.0))
-        }
+        let mut d = match cc.translation {
+            Some(v) => v,
+            None => Vec3::ZERO
+        };
+        d.y += dy;
+
+        cc.translation = Some(d);
     }
 }
 
