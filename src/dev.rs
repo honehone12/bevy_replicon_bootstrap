@@ -253,13 +253,10 @@ pub fn apply_gravity_system(
             jump.power = 0.0;
         }
 
-        let mut d = match cc.translation {
-            Some(v) => v,
-            None => Vec3::ZERO
-        };
-        d.y += dy;
-
-        cc.translation = Some(d);
+        match cc.translation {
+            Some(ref mut v) => v.y += dy,
+            None => cc.translation = Some(Vec3::new(0.0, dy, 0.0))
+        }
     }
 }
 
