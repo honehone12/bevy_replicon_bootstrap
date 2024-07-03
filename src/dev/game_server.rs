@@ -2,7 +2,6 @@ use bevy::utils::Uuid;
 use bevy_replicon::server::server_tick::ServerTick;
 use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::{ClientId as RenetClientId, RenetServer};
-use bevy_rapier3d::prelude::*;
 use level::*;
 use super::*;
 
@@ -28,6 +27,9 @@ impl Plugin for GameServerPlugin {
             },
             RelevantGroupPlugin::<PlayerGroup>::new()
         ))
+        .add_systems(Startup, 
+            server_setup_floor
+        )
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
@@ -97,8 +99,13 @@ fn handle_player_entity_event(
                 TransformBundle::from_transform(
                     Transform::from_translation(player_start.translation)
                 ),
-                CharacterControllerBundle::default(),
-                Collider::capsule_y(CHARACTER_HALF_HIGHT, CHARACTER_RADIUS),
+                CharacterControllerBundle::new(
+                    CHARACTER_HALF_HIGHT,
+                    CHARACTER_RADIUS,
+                    CHARACTER_OFFSET,
+                    CHARACTER_MASS
+                ),
+                Jump::default(),
                 NetworkTranslationBundle::<NetworkCharacterController>::new(
                     player_start.translation,
                     default(), 

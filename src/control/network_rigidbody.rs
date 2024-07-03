@@ -1,36 +1,20 @@
 use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
 
-#[derive(Component, Serialize, Deserialize, Clone)]
+#[derive(Component, Serialize, Deserialize)]
 pub enum NetworkRigidBody {
-    ServerSimulation {
-        translation: Vec3,
-        euler: Vec3
-    },
-    ClientPrediction {
-        translation: Vec3,
-        euler: Vec3,
-        linear_velocity: Vec3,
-        angular_velocity: Vec3
-    }
+    ServerSimulation,
+    ClientPrediction
 }
 
-impl NetworkRigidBody {
-    #[inline]
-    pub fn default_server_simulation() -> Self {
-        Self::ServerSimulation { 
-            translation: Vec3::ZERO, 
-            euler: Vec3::ZERO 
-        }
-    }
+#[derive(Component, Serialize, Deserialize, Default)]
+pub struct NetworkRBLinearVelocity3D(Vec3);
 
-    #[inline]
-    pub fn default_client_simulation() -> Self {
-        Self::ClientPrediction { 
-            translation: Vec3::ZERO, 
-            euler: Vec3::ZERO, 
-            linear_velocity: Vec3::ZERO, 
-            angular_velocity: Vec3::ZERO 
-        }
-    }
-}
+#[derive(Component, Serialize, Deserialize, Default)]
+pub struct NetworkRBAngularVelocity3D(pub Vec3);
+
+#[derive(Component, Serialize, Deserialize, Default)]
+pub struct NetworkRBTranslation3D(pub Vec3);
+
+#[derive(Component, Serialize, Deserialize, Default)]
+pub struct NetworkRBRotation3D(pub Vec3);

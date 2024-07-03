@@ -55,14 +55,12 @@ impl Plugin for GameCommonPlugin {
             ClientEventPlugin::<NetworkFire>::new(ChannelKind::Ordered),
         ))
         .replicate::<PlayerPresentation>()
-        .add_systems(FixedUpdate,
-            update_character_controller_system
-            .in_set(ClientBootSet::Update)
-        )
-        /*.add_systems(FixedUpdate,
-            handle_character_controller_output
-            .after(AFTER_PHYSICS_SET)
-        )*/;
+        .add_systems(FixedUpdate,(
+            ground_check_system,
+            update_character_controller_system,
+            apply_gravity_system
+        ).chain(
+        ).in_set(ClientBootSet::Update));
     }
 }
 
@@ -82,6 +80,12 @@ impl PlayerPresentation {
             )
         }
     }
+}
+
+#[derive(Component, Default)]
+pub struct Jump {
+    power: f32,
+    grounded: bool
 }
 
 #[derive(Component, Default)]
@@ -141,37 +145,70 @@ impl NetworkEvent for NetworkFire {
     }
 }
 
+pub fn ground_check_system(
+    mut query: Query<(
+        &Transform,
+        &KinematicCharacterController,
+        &mut Jump
+    )>,
+    rapier: Res<RapierContext>
+) {
+    for (transform, cc, mut jump) in query.iter_mut() {
+        let height = CHARACTER_HALF_HIGHT * 2.0;
+        let offset = match cc.offset {
+            CharacterLength::Absolute(n) => n,
+            CharacterLength::Relative(n) => n * height * 2.0
+        };
+        let error = 0.05;
+
+        jump.grounded = rapier.cast_ray(
+            transform.translation - height, 
+            transform.down().into(), 
+            offset + error, 
+            false, 
+            default()
+        ).is_some();
+    }
+}
+
 pub fn update_character_controller_system(
     mut query: Query<(
         &mut Transform,
         &mut KinematicCharacterController,
+        &mut Jump,
         &mut EventSnapshots<NetworkMovement2_5D>
     )>,
     params: Res<PlayerMovementParams>,
     time: Res<Time<Fixed>>
 ) {
-    for (mut transform, mut cc, mut movement_snaps) in query.iter_mut() {
-        if movement_snaps.frontier_len() == 0 {
+    for (
+        mut transform, 
+        mut cc, 
+        mut jump,
+        mut movements
+    ) in query.iter_mut() {
+        if movements.frontier_len() == 0 {
             continue;
         }
 
-        movement_snaps.sort_frontier_by_index();
+        movements.sort_frontier_by_index();
+        let delta_time = time.delta_seconds();
 
-        for snap in movement_snaps.frontier_ref()
+        for snap in movements.frontier_ref()
         .iter() {
-            let mut d = match cc.translation {
-                None => Vec3::ZERO,
-                Some(v) => v
-            };
-
             let movement = snap.event();
 
             if movement.rotation_axis != Vec2::ZERO {
                 let mut angle = movement.rotation_axis.x;
-                angle *= params.base_angular_speed * time.delta_seconds();
+                angle *= params.base_angular_speed * delta_time;
 
                 transform.rotate_y(-angle.to_radians());
             }
+
+            let mut d = match cc.translation {
+                None => Vec3::ZERO,
+                Some(v) => v
+            };
 
             if movement.linear_axis != Vec2::ZERO {
                 let axis = Vec3::new(
@@ -180,27 +217,46 @@ pub fn update_character_controller_system(
                     -movement.linear_axis.y
                 ).normalize();
                 
-                let dir = (transform.rotation * axis)
-                .normalize();
+                let dir = transform.rotation.normalize() * axis;
 
-                d += dir * (params.base_speed * time.delta_seconds());
-                cc.translation = Some(d);
+                d += dir * params.base_speed * delta_time;
             }
+
+            if movement.bits & 0x01 != 0 {
+                if jump.grounded {
+                    jump.power = JUMP_POWER;    
+                }    
+            }
+
+            cc.translation = Some(d);
         }
 
-        movement_snaps.cache();
+        movements.cache();
     }
 }
 
-pub fn handle_character_controller_output(
-    query: Query<&KinematicCharacterControllerOutput>
+pub fn apply_gravity_system(
+    mut query: Query<(
+        &mut KinematicCharacterController, 
+        &mut Jump
+    )>,
+    time: Res<Time<Fixed>>
 ) {
-    for out in query.iter() {
-        info!(
-            "{} : {}",
-            out.desired_translation,
-            out.effective_translation
-        );
+    for (mut cc, mut jump) in query.iter_mut() {
+        let delta_time = time.delta_seconds();
+        let mass = cc.custom_mass.unwrap_or(1.0);
+        let g = GRAVITY * mass * delta_time;
+
+        let d = jump.power * delta_time + g;
+        jump.power += g;
+        if jump.grounded && jump.power < 0.0 {
+            jump.power = 0.0;
+        }
+
+        match cc.translation {
+            Some(mut v) => v.y += d,
+            None => cc.translation = Some(Vec3::new(0.0, d, 0.0))
+        }
     }
 }
 

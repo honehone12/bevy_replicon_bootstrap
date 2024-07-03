@@ -18,12 +18,8 @@ pub const DEV_MAX_SNAPSHOT_SIZE: usize = 64;
 pub const BASE_SPEED: f32 = 10.0;
 pub const BASE_ANGULAR_SPEED: f32 = 5.0; 
 
-// (network delata time / local delta time * base speed * local delta time)^2
-// bevy's fixed update = 64hz
-// DEV_NETWORK_TICK_DELTA / 0.0156 * BASE_SPEED * 0.0156 = 0.9999
 pub const TRANSLATION_ERROR_THRESHOLD: f32 = 1.0;
 pub const ROTATION_ERROR_THRESHOLD: f32 = 10.0;
-// 1sec / network tick
 pub const PREDICTION_ERROR_COUNT_THRESHOLD: u32 = 10;
 
 pub const DISTANCE_CULLING_THREASHOLD: f32 = 50.0;
@@ -77,3 +73,8 @@ pub const PHYSICS_SUBSTEPS: usize = 6;
 
 pub const CHARACTER_HALF_HIGHT: f32 = 0.5;
 pub const CHARACTER_RADIUS: f32 = 0.5;
+pub const CHARACTER_MASS: f32 = 3.0;
+pub const CHARACTER_OFFSET: f32 = 0.2;
+
+pub const JUMP_POWER: f32 = 45.0;
+pub const GRAVITY: f32 = -9.81;

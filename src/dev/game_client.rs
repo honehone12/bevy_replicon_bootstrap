@@ -3,7 +3,6 @@ use bevy::{
     input::mouse::MouseMotion 
 };
 use bevy_replicon::client::confirm_history::ConfirmHistory;
-use bevy_rapier3d::prelude::*;
 use super::{
     level::*, 
     * 
@@ -42,13 +41,14 @@ impl Plugin for GameClientPlugin {
         .add_systems(Startup, (
             setup_light,
             setup_fixed_camera,
-            setup_floor
+            client_setup_floor
         ))
         .add_systems(Update, (
             handle_transport_error,
             handle_player_spawned,
             handle_input, 
-            handle_action 
+            handle_action,
+            draw_cc_gizmos_system 
         ).chain());
     }
 }
@@ -200,8 +200,6 @@ fn handle_player_spawned(
                 },
                 ..default()
             },
-
-            Collider::capsule_y(CHARACTER_HALF_HIGHT, CHARACTER_RADIUS),
             ComponentSnapshots::with_init(
                 *net_trans, 
                 tick, 
@@ -219,15 +217,38 @@ fn handle_player_spawned(
             commands.entity(e)
             .insert((
                 Owning,
-                CharacterControllerBundle::default(),
+                CharacterControllerBundle::new(
+                    CHARACTER_HALF_HIGHT,
+                    CHARACTER_RADIUS,
+                    CHARACTER_OFFSET,
+                    CHARACTER_MASS
+                ),
+                Jump::default(),
                 EventSnapshots::<NetworkFire>::with_capacity(DEV_MAX_SNAPSHOT_SIZE),
                 EventSnapshots::<NetworkMovement2_5D>::with_capacity(DEV_MAX_SNAPSHOT_SIZE)
             ));
         } else {
             commands.entity(e)
-            .insert(RigidBody::KinematicPositionBased);
+            .insert(CharacterControllerBundle::replica(
+                CHARACTER_HALF_HIGHT,
+                CHARACTER_RADIUS
+            ));
         }
 
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
     } 
+}
+
+fn draw_cc_gizmos_system(
+    query: Query<&NetworkCharacterController>,
+    mut gizmos: Gizmos
+) {
+    for cc in query.iter() {
+        gizmos.sphere(
+            cc.0, 
+            Quat::IDENTITY, 
+            CHARACTER_RADIUS,
+            Color::GREEN 
+        );
+    }
 }

@@ -9,12 +9,12 @@ pub const LIGHT_POSITION: Vec3 = vec3(0.0, 50.0, 0.0);
 pub const LIGHT_ROTATION_X: f32 = -std::f32::consts::PI / 4.0;
 pub const CAMERA_POSITION: Vec3 = vec3(0.0, 70.0, 25.0);
 
-pub fn setup_floor(
+pub fn client_setup_floor(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>
 ) {
-    let extents = FLOOR_SIZE * 0.5;
+    
     commands.spawn((
         PbrBundle{
             mesh: meshes.add(Mesh::from(Cuboid::from_size(FLOOR_SIZE))),
@@ -22,8 +22,23 @@ pub fn setup_floor(
             transform: Transform::from_translation(FLOOR_POSITION),
             ..default()
         },
-        Collider::cuboid(extents.x, extents.y, extents.z)
+        floor_collider()    
     ));
+}
+
+pub fn server_setup_floor(mut commands: Commands) {
+    commands.spawn((
+        TransformBundle::from_transform(
+            Transform::from_translation(FLOOR_POSITION)
+        ),
+        floor_collider()
+    ));
+}
+
+#[inline]
+fn floor_collider() -> Collider {
+    let extents = FLOOR_SIZE * 0.5;
+    Collider::cuboid(extents.x, extents.y, extents.z)
 }
 
 pub fn setup_light(mut commands: Commands) {
@@ -49,10 +64,10 @@ pub fn setup_fixed_camera(mut commands: Commands) {
     });
 }
 
-pub const SPAWN_POSITION_0: Vec3 = vec3(-25.0, 1.0, -25.0);
-pub const SPAWN_POSITION_1: Vec3 = vec3(25.0, 1.0, -25.0);
-pub const SPAWN_POSITION_2: Vec3 = vec3(25.0, 1.0, 25.0);
-pub const SPAWN_POSITION_3: Vec3 = vec3(-25.0, 1.0, 25.0);
+pub const SPAWN_POSITION_0: Vec3 = vec3(-10.0, 1.5, -10.0);
+pub const SPAWN_POSITION_1: Vec3 = vec3(10.0, 1.5, -10.0);
+pub const SPAWN_POSITION_2: Vec3 = vec3(10.0, 1.5, 10.0);
+pub const SPAWN_POSITION_3: Vec3 = vec3(-10.0, 1.5, 10.0);
 
 pub const PLAYER_START_0: PlayerStart = PlayerStart{
     translation: SPAWN_POSITION_0,
