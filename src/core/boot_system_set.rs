@@ -5,7 +5,6 @@ pub enum ServerBootSet {
     UnboxEvent,
     PlayerEntityEvent,
     CorrectReplication,
-    Update,
     Culling,
     Grouping,
     ApplyLocalChange,
@@ -16,6 +15,5 @@ pub enum ServerBootSet {
 pub enum ClientBootSet {
     UnboxReplication,
     ApplyReplication,
-    Update,
     CacheLocalChange
 }

@@ -33,8 +33,7 @@ impl Plugin for Rapier3DPlugin {
 #[derive(Bundle)]
 pub struct CharacterControllerBundle {
     pub character_controller: KinematicCharacterController,
-    pub capsule: Collider,
-    pub rb: RigidBody
+    pub capsule: Collider
 }
 
 impl CharacterControllerBundle {
@@ -61,8 +60,7 @@ impl CharacterControllerBundle {
                 snap_to_ground: None,
                 ..default()
             },
-            capsule: Collider::capsule_y(half_hight, radius),
-            rb: RigidBody::KinematicPositionBased
+            capsule: Collider::capsule_y(half_hight, radius)
         }
     }
 

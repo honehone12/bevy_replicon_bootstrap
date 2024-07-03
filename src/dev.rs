@@ -60,7 +60,7 @@ impl Plugin for GameCommonPlugin {
             update_character_controller_system,
             apply_gravity_system
         ).chain(
-        ).in_set(ClientBootSet::Update));
+        ).before(BEFORE_PHYSICS_SET));
     }
 }
 

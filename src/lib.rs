@@ -42,10 +42,6 @@ impl Plugin for NetworkBootPlugin {
             ClientBootSet::ApplyReplication
             .after(ClientBootSet::UnboxReplication)
         )
-        .configure_sets(FixedUpdate, 
-            ClientBootSet::Update
-            .before(BEFORE_PHYSICS_SET)
-        )
         .configure_sets(PostUpdate, 
             ClientBootSet::CacheLocalChange
             .before(ClientSet::Send)
@@ -61,10 +57,6 @@ impl Plugin for NetworkBootPlugin {
         .configure_sets(PreUpdate, 
             ServerBootSet::CorrectReplication
             .after(ServerBootSet::UnboxEvent)
-        )
-        .configure_sets(FixedUpdate, 
-            ServerBootSet::Update
-            .before(BEFORE_PHYSICS_SET)
         )
         .configure_sets(PostUpdate, 
             ServerBootSet::Grouping
