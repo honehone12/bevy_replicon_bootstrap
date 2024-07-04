@@ -5,6 +5,7 @@ pub mod interpolation;
 pub mod prediction;
 pub mod boot_system_set;
 pub mod player_start_line;
+pub mod latest_confirmed_tick;
 
 pub use network_entity::*;
 pub use network_event::*;
@@ -13,6 +14,7 @@ pub use interpolation::*;
 pub use prediction::*;
 pub use boot_system_set::*;
 pub use player_start_line::*;
+pub use latest_confirmed_tick::*;
 
 use serde::{Serialize, de::DeserializeOwned};
 use bevy::prelude::*;

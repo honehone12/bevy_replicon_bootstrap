@@ -75,6 +75,14 @@ impl Plugin for NetworkBootPlugin {
             .before(ServerBootSet::Cache)
         )
         .replicate::<NetworkEntity>();
+
+        if app.world.contains_resource::<RepliconClient>() {
+            app.insert_resource(LatestConfirmedTick::default())
+            .add_systems(PreUpdate, 
+                latest_confirmed_tick_system
+                .in_set(ClientBootSet::UnboxReplication)
+            );
+        }
     }
 }
 
