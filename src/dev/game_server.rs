@@ -110,19 +110,19 @@ fn handle_player_entity_event(
                     player_start.translation,
                     default(), 
                     tick, 
-                    DEV_MAX_UPDATE_SNAPSHOT_SIZE
+                    DEV_LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
                 NetworkRotationBundle::<NetworkAngle>::new(
                     default(), 
                     RotationAxis::Z,
                     tick, 
-                    DEV_MAX_UPDATE_SNAPSHOT_SIZE
+                    DEV_LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
                 EventSnapshots::<NetworkMovement2_5D>::with_capacity(
-                    DEV_MAX_UPDATE_SNAPSHOT_SIZE
+                    DEV_LARGE_CACHE_SIZE
                 ),
                 EventSnapshots::<NetworkFire>::with_capacity(
-                    DEV_MAX_SNAPSHOT_SIZE
+                    DEV_MEDIUM_CACHE_SIZE
                 )
             ));
         }
@@ -139,12 +139,16 @@ fn handle_fire(
         &ComponentSnapshots<NetworkCharacterController>
     )>,
 ) {
+    // *******************************
+    // this code should be improved
+    // *******************************
+    
     for (shooter, mut fire_snaps) in shooters.iter_mut() {
         for fire in fire_snaps.frontier_ref() {
             info!(
                 "player: {:?} fired at {}",
                 shooter.client_id(), 
-                fire.timestamp() 
+                fire.sent_timestamp() 
             );
     
             for (net_e, snaps) in query.iter() {
@@ -153,19 +157,19 @@ fn handle_fire(
                 let cache = snaps.cache_ref();
                 let index = match cache.iter()
                 .rposition(|s| 
-                    s.timestamp() <= fire.timestamp()
+                    s.timestamp() <= fire.sent_timestamp()
                 ) {
                     Some(idx) => idx,
                     None => {
                         if cfg!(debug_assertions) {
                             panic!(
                                 "could not find timestamp smaller than {}",
-                                fire.timestamp()
+                                fire.sent_timestamp()
                             );
                         } else {
                             warn!(
                                 "could not find timestamp smaller than {}, skipping",
-                                fire.timestamp()
+                                fire.sent_timestamp()
                             );
                             continue;
                         }
@@ -175,9 +179,10 @@ fn handle_fire(
                 // get by found index
                 let snap = cache.get(index).unwrap();
                 info!(
-                    "found latest snap: shooter: {}, index: {}, timestamp: {}, translation: {}",
+                    "found latest snap: shooter: {}, index: {}, total: {}, timestamp: {}, translation: {}",
                     is_shooter, 
-                    index, 
+                    index,
+                    cache.len(), 
                     snap.timestamp(), 
                     snap.component().0
                 );

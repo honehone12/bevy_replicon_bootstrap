@@ -50,7 +50,7 @@ impl<E: NetworkEvent> EventSnapshot<E> {
     }
 
     #[inline]
-    pub fn timestamp(&self) -> f64 {
+    pub fn sent_timestamp(&self) -> f64 {
         self.event.timestamp()
     } 
 }
@@ -116,11 +116,21 @@ impl<E: NetworkEvent> EventSnapshots<E> {
 
     pub fn insert(&mut self, event: E, tick: u32)
     -> anyhow::Result<()> {
-        if self.cache_size > 0 
-        && self.frontier_len() > self.cache_size {
+        let frontier_len = self.frontier_len();
+
+        if self.cache_size == 0
+        && frontier_len >= 64 && frontier_len % 64 == 0 {
             warn!(
-                "frontier len: {}, call cache() after frontier_ref()",
-                self.frontier_len()
+                "frontier len: {}, call cache() to clear fronter",
+                frontier_len
+            );
+        }
+        
+        if self.cache_size > 0 
+        && frontier_len > self.cache_size {
+            warn!(
+                "frontier len: {} over cache size, call cache() after frontier_ref()",
+                frontier_len
             );
         }
 
@@ -136,11 +146,11 @@ impl<E: NetworkEvent> EventSnapshots<E> {
                 );
             }
 
-            if event.timestamp() <= frontier_snap.timestamp() {
+            if event.timestamp() <= frontier_snap.sent_timestamp() {
                 bail!(
                     "timestamp: {} is older than latest: {}",
                     event.timestamp(),
-                    frontier_snap.timestamp(),
+                    frontier_snap.sent_timestamp(),
                 );
             }
 

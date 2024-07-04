@@ -107,11 +107,21 @@ impl<C: Component> ComponentSnapshots<C> {
 
     pub fn insert(&mut self, component: C, tick: u32) 
     -> anyhow::Result<()> {
-        if self.cache_size > 0
-        && self.frontier_len() > self.cache_size {
+        let frontier_len = self.frontier_len();
+        
+        if self.cache_size == 0
+        && frontier_len >= 64 && frontier_len % 64 == 0 {
             warn!(
-                "frontier len: {}, call cache() after frontier_ref()",
-                self.frontier_len()
+                "fronteier len: {} call cache() for clear frontier",
+                frontier_len
+            );
+        } 
+        
+        if self.cache_size > 0
+        && frontier_len > self.cache_size {
+            warn!(
+                "frontier len: {} over cache size, call cache() after frontier_ref()",
+                frontier_len
             );
         }
 
