@@ -30,7 +30,7 @@ fn main() {
             Duration::from_secs_f32(DEV_SERVER_TICK_DELTA)
         )),
         LogPlugin{
-            level: Level::INFO,
+            level: Level::DEBUG,
             ..default()
         }
     ))

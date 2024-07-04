@@ -1,5 +1,5 @@
 use std::net::{IpAddr, Ipv4Addr};
-use bevy::prelude::*;
+use bevy::{log::{Level, LogPlugin}, prelude::*};
 use bevy_replicon::prelude::*;
 use bevy_replicon_bootstrap::{
     prelude::*,
@@ -23,7 +23,12 @@ fn main() {
         token_expire_seconds: DEV_TOKEN_EXPIRE_SEC,
     };
     
-    app.add_plugins(DefaultPlugins)
+    app.add_plugins((
+        DefaultPlugins.set(LogPlugin{
+            level: Level::DEBUG,
+            ..default()
+        }),
+    ))
     .add_plugins(builder.build_replicon())
     .add_plugins(GameClientPlugin);
 

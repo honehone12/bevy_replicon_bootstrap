@@ -1,7 +1,4 @@
-use bevy::{
-    utils::SystemTime,
-    input::mouse::MouseMotion 
-};
+use bevy::input::mouse::MouseMotion;
 use bevy_replicon::client::confirm_history::ConfirmHistory;
 use super::{
     level::*, 
@@ -118,15 +115,14 @@ fn handle_action(
     query: Query<&Transform, With<Owning>>,
     mut actions: EventReader<Action>,
     mut movements: EventWriter<NetworkMovement2_5D>,
-    mut fires: EventWriter<NetworkFire>
+    mut fires: EventWriter<NetworkFire>,
+    latest_confirmed: Res<LatestConfirmedTick>
 ) {
     if let Ok(transform) = query.get_single() {
-        for (a, event_id) in actions.read_with_id() {
-            let timestamp = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("sytem time looks earlier than unix epoch")
-            .as_secs_f64();
+        let tick = latest_confirmed.get()
+        .get();
 
+        for (a, event_id) in actions.read_with_id() {
             if a.has_movement() {
                 let mut bits = 0;
                 if a.has_jump {
@@ -145,14 +141,14 @@ fn handle_action(
                     rotation_axis: a.rotation_vec,
                     bits,
                     index: event_id.id,
-                    timestamp,
+                    tick
                 });
             }
 
             if a.has_fire {
                 fires.send(NetworkFire{
                     index: event_id.id,
-                    timestamp
+                    tick
                 });
             }
         }

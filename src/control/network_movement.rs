@@ -11,7 +11,7 @@ pub struct NetworkMovement2D {
     pub rotation_axis: Vec2,
     pub bits: u16,
     pub index: usize,
-    pub timestamp: f64
+    pub tick: u32
 }
 
 impl NetworkEvent for NetworkMovement2D {
@@ -19,10 +19,10 @@ impl NetworkEvent for NetworkMovement2D {
     fn index(&self) -> usize {
         self.index
     }
-    
+
     #[inline]
-    fn timestamp(&self) -> f64 {
-        self.timestamp
+    fn tick(&self) -> u32 {
+        self.tick
     }
 
     #[inline]
@@ -38,9 +38,6 @@ impl NetworkEvent for NetworkMovement2D {
         }
         if !self.rotation_axis.is_finite() {
             bail!("failed to validate rotation axis");
-        }
-        if !self.timestamp.is_finite() {
-            bail!("failed to validate timestamp");
         }
 
         Ok(())
@@ -85,7 +82,7 @@ pub struct NetworkMovement2_5D {
     pub rotation_axis: Vec2,
     pub bits: u16,
     pub index: usize,
-    pub timestamp: f64
+    pub tick: u32
 }
 
 impl NetworkEvent for NetworkMovement2_5D {
@@ -93,10 +90,10 @@ impl NetworkEvent for NetworkMovement2_5D {
     fn index(&self) -> usize {
         self.index
     }
-    
+
     #[inline]
-    fn timestamp(&self) -> f64 {
-        self.timestamp
+    fn tick(&self) -> u32 {
+        self.tick
     }
 
     #[inline]
@@ -112,9 +109,6 @@ impl NetworkEvent for NetworkMovement2_5D {
         }
         if !self.rotation_axis.is_finite() {
             bail!("failed to validate rotation axis");
-        }
-        if !self.timestamp.is_finite() {
-            bail!("failed to validate timestamp");
         }
 
         Ok(())

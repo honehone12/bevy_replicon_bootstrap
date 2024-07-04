@@ -146,9 +146,9 @@ fn handle_fire(
     for (shooter, mut fire_snaps) in shooters.iter_mut() {
         for fire in fire_snaps.frontier_ref() {
             info!(
-                "player: {:?} fired at {}",
+                "player: {:?} fired at tick {}",
                 shooter.client_id(), 
-                fire.sent_timestamp() 
+                fire.sent_tick()
             );
     
             for (net_e, snaps) in query.iter() {
@@ -157,19 +157,19 @@ fn handle_fire(
                 let cache = snaps.cache_ref();
                 let index = match cache.iter()
                 .rposition(|s| 
-                    s.timestamp() <= fire.sent_timestamp()
+                    s.tick() <= fire.sent_tick()
                 ) {
                     Some(idx) => idx,
                     None => {
                         if cfg!(debug_assertions) {
                             panic!(
-                                "could not find timestamp smaller than {}",
-                                fire.sent_timestamp()
+                                "could not find tick smaller than {}",
+                                fire.sent_tick()
                             );
                         } else {
                             warn!(
-                                "could not find timestamp smaller than {}, skipping",
-                                fire.sent_timestamp()
+                                "could not find tick smaller than {}, skipping",
+                                fire.sent_tick()
                             );
                             continue;
                         }

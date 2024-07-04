@@ -3,7 +3,6 @@ pub mod level;
 pub mod game_client;
 pub mod game_server;
 
-use anyhow::bail;
 use rand::prelude::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
@@ -121,7 +120,7 @@ pub struct PlayerMovementParams {
 #[derive(Event, Serialize, Deserialize, Clone)]
 pub struct NetworkFire {
     pub index: usize,
-    pub timestamp: f64
+    pub tick: u32
 }
 
 impl NetworkEvent for NetworkFire {
@@ -131,16 +130,12 @@ impl NetworkEvent for NetworkFire {
     }
 
     #[inline]
-    fn timestamp(&self) -> f64 {
-        self.timestamp
+    fn tick(&self) -> u32 {
+        self.tick
     }
 
     #[inline]
     fn validate(&self) -> anyhow::Result<()> {
-        if !self.timestamp.is_finite() {
-            bail!("failed to validate timestamp");
-        }
-
         Ok(())
     }
 }

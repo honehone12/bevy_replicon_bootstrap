@@ -314,7 +314,7 @@ pub(super) fn client_populate_component_snapshots<C: Component + Clone>(
         let tick = confirmed_tick.last_tick().get();
         match snaps.insert(c.clone(), tick) {
             Ok(()) => debug!(
-                "inserted component snapshot: frontier len: {}, cache len: {}",
+                "inserted component snapshot frontier len: {}, cache len: {}",
                 snaps.frontier_len(),
                 snaps.cache_len()
             ),

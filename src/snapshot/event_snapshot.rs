@@ -3,11 +3,7 @@ use bevy::{
     utils::SystemTime,
     prelude::*
 };
-use bevy_replicon::{
-    client::confirm_history::ConfirmHistory,
-    server::server_tick::ServerTick, 
-    prelude::*, 
-};
+use bevy_replicon::prelude::*;
 use crate::{
     Owning, 
     core::{NetworkEntity, NetworkEvent}
@@ -15,17 +11,15 @@ use crate::{
 
 pub struct EventSnapshot<E: NetworkEvent> {
     event: E,
-    received_timestamp: f64,
-    tick: u32
+    timestamp: f64
 }
 
 impl<E: NetworkEvent> EventSnapshot<E> {
     #[inline]
-    pub fn new(event: E, received_timestamp: f64, tick: u32) -> Self {
+    pub fn new(event: E, timestamp: f64) -> Self {
         Self{
             event,
-            received_timestamp,
-            tick
+            timestamp
         }
     }
 
@@ -35,24 +29,19 @@ impl<E: NetworkEvent> EventSnapshot<E> {
     }
 
     #[inline]
-    pub fn tick(&self) -> u32 {
-        self.tick
+    pub fn sent_tick(&self) -> u32 {
+        self.event.tick()
     }
 
     #[inline]
     pub fn received_timestamp(&self) -> f64 {
-        self.received_timestamp
+        self.timestamp
     }
 
     #[inline]
     pub fn index(&self) -> usize {
         self.event.index()
     }
-
-    #[inline]
-    pub fn sent_timestamp(&self) -> f64 {
-        self.event.timestamp()
-    } 
 }
 
 #[derive(Component)]
@@ -114,7 +103,7 @@ impl<E: NetworkEvent> EventSnapshots<E> {
         &self.cache
     }
 
-    pub fn insert(&mut self, event: E, tick: u32)
+    pub fn insert(&mut self, event: E)
     -> anyhow::Result<()> {
         let frontier_len = self.frontier_len();
 
@@ -139,18 +128,11 @@ impl<E: NetworkEvent> EventSnapshots<E> {
         .as_secs_f64();
 
         if let Some(frontier_snap) = self.frontier_front() {
-            if tick < frontier_snap.tick {
+            if event.tick() < frontier_snap.sent_tick() {
                 bail!(
-                    "tick: {tick} is older than frontier snapshot: {}", 
-                    frontier_snap.tick
-                );
-            }
-
-            if event.timestamp() <= frontier_snap.sent_timestamp() {
-                bail!(
-                    "timestamp: {} is older than latest: {}",
-                    event.timestamp(),
-                    frontier_snap.sent_timestamp(),
+                    "tick: {} is older than frontier snapshot: {}", 
+                    event.tick(),
+                    frontier_snap.sent_tick()
                 );
             }
 
@@ -166,8 +148,7 @@ impl<E: NetworkEvent> EventSnapshots<E> {
 
         self.frontier.push(EventSnapshot::new(
             event, 
-            received_timestamp, 
-            tick
+            received_timestamp,
         ));
         Ok(())
     }
@@ -218,10 +199,8 @@ impl<E: NetworkEvent> EventSnapshots<E> {
 
 pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
     mut events: EventReader<FromClient<E>>,
-    mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>,
-    server_tick: Res<ServerTick>
+    mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>
 ) {
-    let tick = server_tick.get();
     for FromClient { client_id, event } in events.read() {
         if let Err(e) = event.validate() {
             warn!("discarding: {e}");
@@ -233,7 +212,7 @@ pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
                 continue;
             }
 
-            match snaps.insert(event.clone(), tick) {
+            match snaps.insert(event.clone()) {
                 Ok(()) => debug!(
                     "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
                     snaps.frontier_index(),
@@ -247,12 +226,7 @@ pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
 }
 
 pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
-    mut query: Query<(
-        &mut EventSnapshots<E>, 
-        &ConfirmHistory
-    ),
-        With<Owning>
-    >,
+    mut query: Query<&mut EventSnapshots<E>, With<Owning>>,
     mut events: EventReader<E>,
 ) {
     for event in events.read() {
@@ -261,9 +235,8 @@ pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
             continue;
         }
 
-        for (mut snaps, confirmed_tick) in query.iter_mut() {
-            let tick = confirmed_tick.last_tick().get();
-            match snaps.insert(event.clone(), tick) {
+        for mut snaps in query.iter_mut() {
+            match snaps.insert(event.clone()) {
                 Ok(()) => debug!(
                     "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
                     snaps.frontier_index(),

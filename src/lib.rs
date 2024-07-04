@@ -43,7 +43,7 @@ impl Plugin for NetworkBootPlugin {
             .after(ClientBootSet::UnboxReplication)
         )
         .configure_sets(PostUpdate, 
-            ClientBootSet::CacheLocalChange
+            ClientBootSet::Cache
             .before(ClientSet::Send)
         )
         .configure_sets(PreUpdate, 
@@ -143,7 +143,7 @@ E: NetworkMovement {
             ).in_set(ClientBootSet::ApplyReplication))
             .add_systems(PostUpdate, 
                 cache_translation_system::<T>
-                .in_set(ClientBootSet::CacheLocalChange)
+                .in_set(ClientBootSet::Cache)
             );
         } else {
             panic!("could not find replicon server nor client");
@@ -191,7 +191,7 @@ E: NetworkMovement {
             ).in_set(ClientBootSet::ApplyReplication))
             .add_systems(PostUpdate,
                 cache_rotation_system::<R>
-                .in_set(ClientBootSet::CacheLocalChange)
+                .in_set(ClientBootSet::Cache)
             );
         } else {
             panic!("could not find replicon server nor client");

@@ -15,5 +15,5 @@ pub enum ServerBootSet {
 pub enum ClientBootSet {
     UnboxReplication,
     ApplyReplication,
-    CacheLocalChange
+    Cache
 }

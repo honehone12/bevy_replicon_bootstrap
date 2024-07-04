@@ -104,6 +104,7 @@ pub(crate) fn apply_transform_translation_system<T>(
 where T: NetworkTranslation {
     for (transform, mut t) in query.iter_mut() {
         *t = T::from_vec3(transform.translation, axis.translation);
+        debug!("updated translation: {}", transform.translation);
     }
 }
 
@@ -117,6 +118,7 @@ pub(crate) fn apply_transform_rotation_system<R>(
 where R: NetworkRotation {
     for (transform, mut r) in query.iter_mut() {
         *r = R::from_quat(transform.rotation, axis.rotation);
+        debug!("updated rotation: {}", transform.rotation);
     } 
 }
 
@@ -237,10 +239,10 @@ E: NetworkMovement {
         movements.sort_frontier_by_index();
         
         // frontier is not empty
-        let first = movements.frontier_front()
-        .unwrap()
-        .event();
-        let first_timestamp = first.timestamp();
+        let latest_snap = movements.frontier_front()
+        .unwrap();
+        let first = latest_snap.event();
+        let first_timestamp = latest_snap.received_timestamp();
 
         let trans_cache = trans_snaps.cache_ref();
         let trans_idx = match trans_cache.iter()
@@ -262,11 +264,16 @@ E: NetworkMovement {
         };
 
         // get by found index
-        let server_translation = trans_cache.get(trans_idx)
-        .unwrap()
-        .component()
+        let found_snap = trans_cache.get(trans_idx)
+        .unwrap();
+        let server_translation = found_snap.component()
         .to_vec3(axis.translation);
         let client_translation = first.current_translation(axis.translation);
+        debug!(
+            "found snap at: {} for timestamp: {}",
+            found_snap.timestamp(),
+            first_timestamp
+        );
 
         let trans_err = server_translation.distance_squared(client_translation);
         if trans_err > thresholds.translation_threshold {
@@ -315,10 +322,10 @@ E: NetworkMovement {
         movements.sort_frontier_by_index();
         
         // frontier is not empty
-        let first = movements.frontier_front()
-        .unwrap()
-        .event();
-        let first_timestamp = first.timestamp();
+        let latest_snap = movements.frontier_front()
+        .unwrap();
+        let first = latest_snap.event();
+        let first_timestamp = latest_snap.received_timestamp();
 
         let rot_cache = rot_snaps.cache_ref();
         let rot_idx = match rot_cache.iter()
@@ -340,15 +347,20 @@ E: NetworkMovement {
         };
 
         // get by found index
-        let server_rotation = rot_cache.get(rot_idx)
-        .unwrap()
-        .component()
+        let found_snap = rot_cache.get(rot_idx)
+        .unwrap();
+        let server_rotation = found_snap.component()
         .to_quat(axis.rotation);
         let client_rotation = first.current_rotation(axis.rotation);
         if client_rotation.length_squared() == 0.0 {
             warn!("client rotation length is zero, skipping update");
             continue;
         }
+        debug!(
+            "found snap at: {} for timestamp: {}",
+            found_snap.timestamp(),
+            first_timestamp
+        );
 
         let rot_err = server_rotation.normalize()
         .angle_between(client_rotation.normalize())
