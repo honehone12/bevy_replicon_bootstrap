@@ -239,24 +239,25 @@ E: NetworkMovement {
         movements.sort_frontier_by_index();
         
         // frontier is not empty
-        let latest_snap = movements.frontier_front()
+        let frontier_snap = movements.frontier_front()
         .unwrap();
-        let first = latest_snap.event();
-        let first_timestamp = latest_snap.received_timestamp();
+        let frontier_tick = frontier_snap.sent_tick();
+        let frontier = frontier_snap.event();
 
         let trans_cache = trans_snaps.cache_ref();
         let trans_idx = match trans_cache.iter()
         .rposition(|s| 
-            s.timestamp() <= first_timestamp
+            s.tick() <= frontier_tick
         ) {
             Some(idx) => idx,
             None => {
                 if cfg!(debug_assertions) {
-                    panic!("could not find snapshot for timestamp: {first_timestamp}");
+                    panic!(
+                        "could not find snapshot for tick: {frontier_tick}"
+                    );
                 } else {
                     error!(
-                        "could not find snapshot for timestamp: {}, skipping update",
-                        first_timestamp
+                        "could not find snapshot for tick: {frontier_tick}, skipping"
                     );
                     continue;
                 }
@@ -268,11 +269,11 @@ E: NetworkMovement {
         .unwrap();
         let server_translation = found_snap.component()
         .to_vec3(axis.translation);
-        let client_translation = first.current_translation(axis.translation);
+        let client_translation = frontier.current_translation(axis.translation);
         debug!(
-            "found snap at: {} for timestamp: {}",
-            found_snap.timestamp(),
-            first_timestamp
+            "found snap at: {} for event's tick: {}",
+            found_snap.tick(),
+            frontier_tick
         );
 
         let trans_err = server_translation.distance_squared(client_translation);
@@ -322,24 +323,25 @@ E: NetworkMovement {
         movements.sort_frontier_by_index();
         
         // frontier is not empty
-        let latest_snap = movements.frontier_front()
+        let frontier_snap = movements.frontier_front()
         .unwrap();
-        let first = latest_snap.event();
-        let first_timestamp = latest_snap.received_timestamp();
+        let frontier_tick = frontier_snap.sent_tick();
+        let frontier = frontier_snap.event();
 
         let rot_cache = rot_snaps.cache_ref();
         let rot_idx = match rot_cache.iter()
         .rposition(|s| 
-            s.timestamp() <= first_timestamp
+            s.tick() <= frontier_tick
         ) {
             Some(idx) => idx,
             None => {
                 if cfg!(debug_assertions) {
-                    panic!("could not find snapshot for timestamp: {first_timestamp}");
+                    panic!(
+                        "could not find snapshot for tick: {frontier_tick}"
+                    );
                 } else {
                     error!(
-                        "could not find snapshot for timestamp: {}, skipping update",
-                        first_timestamp
+                        "could not find snapshot for tick: {frontier_tick}, skipping"
                     );
                     continue;
                 }
@@ -351,15 +353,15 @@ E: NetworkMovement {
         .unwrap();
         let server_rotation = found_snap.component()
         .to_quat(axis.rotation);
-        let client_rotation = first.current_rotation(axis.rotation);
+        let client_rotation = frontier.current_rotation(axis.rotation);
         if client_rotation.length_squared() == 0.0 {
             warn!("client rotation length is zero, skipping update");
             continue;
         }
         debug!(
-            "found snap at: {} for timestamp: {}",
-            found_snap.timestamp(),
-            first_timestamp
+            "found snap at: {} for event's tick: {}",
+            found_snap.tick(),
+            frontier_tick
         );
 
         let rot_err = server_rotation.normalize()
