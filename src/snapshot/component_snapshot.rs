@@ -311,6 +311,7 @@ pub(super) fn client_populate_component_snapshots<C: Component + Clone>(
     >,
 ) {
     for (c, mut snaps, confirmed_tick) in query.iter_mut() {
+        // this as latest replication should be latest tick for this client
         let tick = confirmed_tick.last_tick().get();
         match snaps.insert(c.clone(), tick) {
             Ok(()) => debug!(

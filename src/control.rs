@@ -259,6 +259,7 @@ E: NetworkMovement {
                     error!(
                         "could not find snapshot for tick: {frontier_tick}, skipping"
                     );
+                    // should we sent force replication here ??
                     continue;
                 }
             }
@@ -343,6 +344,7 @@ E: NetworkMovement {
                     error!(
                         "could not find snapshot for tick: {frontier_tick}, skipping"
                     );
+                    // should we sent force replication here ??
                     continue;
                 }
             }
