@@ -43,6 +43,13 @@ pub struct CullingConfig {
     pub clean_up_on_disconnect: bool,
 }
 
+impl CullingConfig {
+    #[inline]
+    pub fn threshold_sq(&self) -> f32 {
+        self.culling_threshold * self.culling_threshold
+    }
+}
+
 fn calculate_distance_system(
     query: Query<(Entity, &Transform), (Changed<Transform>, With<Culling>)>,
     player_views: Query<(Entity, &Transform), With<PlayerView>>,
@@ -83,7 +90,7 @@ fn culling_system(
     query: Query<(Entity, &Culling)>,
     player_views: Query<(Entity, &NetworkEntity), With<PlayerView>>,
     distance_map: Res<DistanceMap>,
-    culling_config: Res<CullingConfig>,
+    config: Res<CullingConfig>,
     mut connected_clients: ResMut<ConnectedClients>
 ) {
     if !distance_map.is_changed() {
@@ -130,7 +137,7 @@ fn culling_system(
             );
 
             let result = addition + distance * multiplier;
-            if result >= culling_config.culling_threshold {
+            if result >= config.threshold_sq() {
                 if visibility.is_visible(e) {
                     visibility.set_visibility(e, false);
                 }

@@ -25,6 +25,7 @@ use prelude::*;
 
 pub struct NetworkBootPlugin {
     pub transform_axis: TransformAxis,
+    pub replication_config: ReplicationConfig,
     pub interpolation_config: InterpolationConfig,
     pub prediction_config: PredictionConfig,
 }
@@ -32,6 +33,7 @@ pub struct NetworkBootPlugin {
 impl Plugin for NetworkBootPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.transform_axis.clone())
+        .insert_resource(self.replication_config.clone())
         .insert_resource(self.interpolation_config.clone())
         .insert_resource(self.prediction_config.clone())
         .configure_sets(PreUpdate, 

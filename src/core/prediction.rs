@@ -11,6 +11,13 @@ pub struct PredictionConfig {
     pub force_replicate_error_count: u32
 }
 
+impl PredictionConfig {
+    #[inline]
+    pub fn translation_threshold_sq(&self) -> f32 {
+        self.translation_threshold * self.translation_threshold
+    }
+}
+
 #[derive(Component, Default)]
 pub struct PredioctionError<C>
 where C: Component + Serialize + DeserializeOwned {

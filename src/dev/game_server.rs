@@ -110,19 +110,19 @@ fn handle_player_entity_event(
                     player_start.translation,
                     default(), 
                     tick, 
-                    DEV_LARGE_CACHE_SIZE
+                    LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
                 NetworkRotationBundle::<NetworkAngle>::new(
                     default(), 
                     RotationAxis::Z,
                     tick, 
-                    DEV_LARGE_CACHE_SIZE
+                    LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
                 EventSnapshots::<NetworkMovement2_5D>::with_capacity(
-                    DEV_LARGE_CACHE_SIZE
+                    LARGE_CACHE_SIZE
                 ),
                 EventSnapshots::<NetworkFire>::with_capacity(
-                    DEV_MEDIUM_CACHE_SIZE
+                    MEDIUM_CACHE_SIZE
                 )
             ));
         }

@@ -96,6 +96,21 @@ impl<C: Component> ComponentSnapshots<C> {
     }
 
     #[inline]
+    pub fn latest_snapshot(&self) -> Option<&ComponentSnapshot<C>> {
+        let frontier_len = self.frontier.len();
+        if frontier_len != 0 {
+            return self.frontier.get(frontier_len - 1);
+        }
+
+        let cache_len = self.cache.len();
+        if cache_len != 0 {
+            return self.cache.get(cache_len - 1);
+        }
+
+        None
+    }
+
+    #[inline]
     pub fn frontier_ref(&self) -> &Vec<ComponentSnapshot<C>> {
         &self.frontier
     }

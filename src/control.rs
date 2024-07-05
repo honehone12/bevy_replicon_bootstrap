@@ -96,13 +96,26 @@ where R: NetworkRotation {
 
 pub(crate) fn apply_transform_translation_system<T>(
     mut query: Query<
-        (&Transform, &mut T), 
+        (&Transform, &mut T, &ComponentSnapshots<T>), 
         Changed<Transform>
     >,
+    config: Res<ReplicationConfig>,
     axis: Res<TransformAxis>
 )
 where T: NetworkTranslation {
-    for (transform, mut t) in query.iter_mut() {
+    for (transform, mut t, snaps) in query.iter_mut() {
+        match snaps.latest_snapshot() {
+            Some(s) => {
+                if s.component()
+                .to_vec3(axis.translation)
+                .distance_squared(transform.translation) 
+                <= config.translation_threshold_sq() {
+                    continue;
+                }
+            }
+            None => warn!("no snapshots found")
+        }
+
         *t = T::from_vec3(transform.translation, axis.translation);
         debug!("updated translation: {}", transform.translation);
     }
@@ -110,13 +123,28 @@ where T: NetworkTranslation {
 
 pub(crate) fn apply_transform_rotation_system<R>(
     mut query: Query<
-        (&Transform, &mut R),
+        (&Transform, &mut R, &ComponentSnapshots<R>),
         Changed<Transform>
     >,
+    config: Res<ReplicationConfig>,
     axis: Res<TransformAxis>
 )
 where R: NetworkRotation {
-    for (transform, mut r) in query.iter_mut() {
+    for (transform, mut r, snaps) in query.iter_mut() {
+        match snaps.latest_snapshot() {
+            Some(s) => {
+                if s.component()
+                .to_quat(axis.rotation)
+                .normalize()
+                .angle_between(transform.rotation.normalize())
+                .abs()
+                <= config.rotation_threashold.to_radians() {
+                    continue;
+                }
+            }
+            None => warn!("no snapshots found")
+        }
+
         *r = R::from_quat(transform.rotation, axis.rotation);
         debug!("updated rotation: {}", transform.rotation);
     } 
@@ -219,7 +247,7 @@ pub(crate) fn correct_translation_error_system<T, E>(
         &mut EventSnapshots<E>
     )>,
     axis: Res<TransformAxis>,
-    thresholds: Res<PredictionConfig>,
+    config: Res<PredictionConfig>,
     mut trans_force_repl: EventWriter<CorrectTranslation<T>>
 )
 where 
@@ -278,9 +306,9 @@ E: NetworkMovement {
         );
 
         let trans_err = server_translation.distance_squared(client_translation);
-        if trans_err > thresholds.translation_threshold {
+        if trans_err > config.translation_threshold_sq() {
             trans_pred_err.increment_count();
-            if trans_pred_err.get_count() > thresholds.force_replicate_error_count {
+            if trans_pred_err.get_count() > config.force_replicate_error_count {
                 warn!("sending translation force replication for: {:?}", net_e.client_id());
                 trans_force_repl.send(ToClients{ 
                     mode: SendMode::Direct(net_e.client_id()), 
@@ -303,7 +331,7 @@ pub(crate) fn correct_rotation_error_system<R, E>(
         &mut EventSnapshots<E>
     )>,
     axis: Res<TransformAxis>,
-    thresholds: Res<PredictionConfig>,
+    config: Res<PredictionConfig>,
     mut rot_force_repl: EventWriter<CorrectRotation<R>>
 )
 where 
@@ -369,9 +397,9 @@ E: NetworkMovement {
         let rot_err = server_rotation.normalize()
         .angle_between(client_rotation.normalize())
         .to_degrees();
-        if rot_err > thresholds.rotation_threshold {
+        if rot_err > config.rotation_threshold {
             rot_pred_err.increment_count();
-            if rot_pred_err.get_count() > thresholds.force_replicate_error_count {
+            if rot_pred_err.get_count() > config.force_replicate_error_count {
                 warn!("sending rotation force replication for: {:?}", net_e.client_id());
                 rot_force_repl.send(ToClients{
                     mode: SendMode::Direct(net_e.client_id()),

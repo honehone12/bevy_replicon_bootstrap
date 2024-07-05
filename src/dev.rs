@@ -26,6 +26,10 @@ impl Plugin for GameCommonPlugin {
                     translation: default(),
                     rotation: RotationAxis::Y
                 },
+                replication_config: ReplicationConfig{
+                    translation_threshold: TRANSLATION_REPLICATION_THRESHOLD,
+                    rotation_threashold: ROTATION_REPLICATION_THRESHOLD
+                },
                 interpolation_config: InterpolationConfig { 
                     network_tick_delta: DEV_NETWORK_TICK_DELTA64 
                 },

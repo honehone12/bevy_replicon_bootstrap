@@ -12,19 +12,22 @@ pub const DEV_SERVER_MAX_CLIENTS: usize = 10;
 pub const DEV_CLIENT_TIME_OUT_SEC: i32 = 15;
 pub const DEV_TOKEN_EXPIRE_SEC: u64 = 300;
 
-pub const DEV_LARGE_CACHE_SIZE: usize = 1024;
-pub const DEV_MEDIUM_CACHE_SIZE: usize = 64;
-pub const DEV_SMALL_CACHE_SIZE: usize = 8;
-pub const DEV_NO_CACHE: usize = 0;
+pub const LARGE_CACHE_SIZE: usize = 1024;
+pub const MEDIUM_CACHE_SIZE: usize = 64;
+pub const SMALL_CACHE_SIZE: usize = 8;
+pub const NO_CACHE: usize = 0;
 
 pub const BASE_SPEED: f32 = 10.0;
 pub const BASE_ANGULAR_SPEED: f32 = 5.0; 
+
+pub const TRANSLATION_REPLICATION_THRESHOLD: f32 = 0.001;
+pub const ROTATION_REPLICATION_THRESHOLD: f32 = 0.001;
 
 pub const TRANSLATION_ERROR_THRESHOLD: f32 = 1.0;
 pub const ROTATION_ERROR_THRESHOLD: f32 = 10.0;
 pub const PREDICTION_ERROR_COUNT_THRESHOLD: u32 = 10;
 
-pub const DISTANCE_CULLING_THREASHOLD: f32 = 100.0;
+pub const DISTANCE_CULLING_THREASHOLD: f32 = 25.0;
 
 pub fn get_dev_protocol_id() -> u64 {
     if cfg!(debug_assertions) {

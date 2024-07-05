@@ -41,6 +41,19 @@ pub struct TransformAxis {
     pub rotation: RotationAxis,
 }
 
+#[derive(Resource, Clone)]
+pub struct ReplicationConfig {
+    pub translation_threshold: f32,
+    pub rotation_threashold: f32
+}
+
+impl ReplicationConfig {
+    #[inline]
+    pub fn translation_threshold_sq(&self) -> f32 {
+        self.translation_threshold * self.translation_threshold
+    }
+}
+
 pub trait NetworkTranslation
 : Component + LinearInterpolatable
 + Serialize + DeserializeOwned + Clone + Default {

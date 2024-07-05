@@ -199,12 +199,12 @@ fn handle_player_spawned(
             ComponentSnapshots::with_init(
                 *net_trans, 
                 tick, 
-                DEV_SMALL_CACHE_SIZE
+                SMALL_CACHE_SIZE
             ).expect("sytem time looks earlier than unix epoch"),
             ComponentSnapshots::with_init(
                 *net_rot, 
                 tick, 
-                DEV_SMALL_CACHE_SIZE
+                SMALL_CACHE_SIZE
             ).expect("sytem time looks earlier than unix epoch")
         ));
 
@@ -220,8 +220,8 @@ fn handle_player_spawned(
                     CHARACTER_MASS
                 ),
                 Jump::default(),
-                EventSnapshots::<NetworkFire>::with_capacity(DEV_NO_CACHE),
-                EventSnapshots::<NetworkMovement2_5D>::with_capacity(DEV_NO_CACHE)
+                EventSnapshots::<NetworkFire>::with_capacity(NO_CACHE),
+                EventSnapshots::<NetworkMovement2_5D>::with_capacity(NO_CACHE)
             ));
         } else {
             commands.entity(e)
