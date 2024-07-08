@@ -34,6 +34,7 @@ impl Plugin for GameClientPlugin {
         .insert_resource(MouseInputActionMap{
             fire: MouseButton::Left
         })
+        .insert_resource(EntityPlayerMap::default())
         .add_event::<Action>()
         .add_systems(Startup, (
             setup_light,
@@ -169,19 +170,19 @@ fn handle_player_spawned(
     ), 
         Added<NetworkEntity>
     >,
+    mut entity_player_map: ResMut<EntityPlayerMap>,
     client: Res<Client>
 ) {
     for (
         e, net_e, 
         presentation, 
-        net_trans, 
-        net_rot, 
+        net_cc, net_rot, 
         confirmed_tick
     ) in query.iter() {
         let tick = confirmed_tick.last_tick()
         .get();
 
-        commands.entity(e)
+        let entity = commands.entity(e)
         .insert((
             PbrBundle{
                 mesh: meshes.add(Mesh::from(Capsule3d::new(
@@ -190,14 +191,14 @@ fn handle_player_spawned(
                 ))),
                 material: materials.add(presentation.color),
                 transform: Transform{
-                    translation: net_trans.to_vec3(TranslationAxis::XZ),
+                    translation: net_cc.to_vec3(TranslationAxis::XZ),
                     rotation: net_rot.to_quat(RotationAxis::Y),
                     scale: Vec3::ONE
                 },
                 ..default()
             },
             ComponentSnapshots::with_init(
-                *net_trans, 
+                *net_cc, 
                 tick, 
                 SMALL_CACHE_SIZE
             ).expect("sytem time looks earlier than unix epoch"),
@@ -206,10 +207,11 @@ fn handle_player_spawned(
                 tick, 
                 SMALL_CACHE_SIZE
             ).expect("sytem time looks earlier than unix epoch")
-        ));
+        ))
+        .id();
 
-        if net_e.client_id()
-        .get() == client.id() {
+        let client_id = net_e.client_id();
+        if client_id.get() == client.id() {
             commands.entity(e)
             .insert((
                 Owning,
@@ -230,7 +232,10 @@ fn handle_player_spawned(
                 CHARACTER_RADIUS
             ));
         }
-
+        
+        entity_player_map.try_insert(entity, client_id)
+        .expect("same entity is already mapped");
+    
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
     } 
 }

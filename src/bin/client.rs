@@ -25,7 +25,7 @@ fn main() {
     
     app.add_plugins((
         DefaultPlugins.set(LogPlugin{
-            level: Level::DEBUG,
+            level: Level::INFO,
             ..default()
         }),
     ))

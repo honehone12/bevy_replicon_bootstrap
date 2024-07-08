@@ -94,6 +94,7 @@ impl Plugin for DefaultPlayerEntityEventPlugin {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RepliconServer>() {
             app.insert_resource(PlayerEntitiesMap::default())
+            .insert_resource(EntityPlayerMap::default())
             .add_event::<PlayerEntityEvent>()
             .add_systems(PreUpdate, 
                 player_entity_event_system
