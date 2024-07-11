@@ -44,7 +44,7 @@ fn setup_ball(mut commands: Commands) {
     let ball_1 = commands.spawn((
         Replicated,
         Culling::Disable,
-        Ball,
+        Ball::ServerSimulation,
         TransformBundle::from_transform(Transform{
             translation: BALL_POSITION_1,
             ..default()
@@ -75,7 +75,7 @@ fn setup_ball(mut commands: Commands) {
     let ball_2 = commands.spawn((
         Replicated,
         Culling::Disable,
-        Ball,
+        Ball::ClientPrediction,
         TransformBundle::from_transform(Transform{
             translation: BALL_POSITION_2,
             ..default()

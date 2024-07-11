@@ -150,7 +150,10 @@ impl NetworkEvent for NetworkFire {
 }
 
 #[derive(Component, Serialize, Deserialize)]
-pub struct Ball;
+pub enum Ball {
+    ServerSimulation,
+    ClientPrediction
+}
 
 pub fn ground_check_system(
     mut query: Query<(
@@ -201,21 +204,16 @@ pub fn update_character_controller_system(
         movements.sort_frontier_by_index();
         let delta_time = time.delta_seconds();
 
-        let mut d = match cc.translation {
-            None => Vec3::ZERO,
-            Some(v) => v
-        };
-
         for snap in movements.frontier_ref()
         .iter() {
             let movement = snap.event();
 
             if movement.rotation_axis != Vec2::ZERO {
-                let mut angle = movement.rotation_axis.x;
-                angle *= params.base_angular_speed * delta_time;
+                let mut angle_delta = movement.rotation_axis.x;
+                angle_delta *= params.base_angular_speed * delta_time;
+                debug!("angle delta: {angle_delta}");
 
-                debug!("angle: {angle}");
-                transform.rotate_y(-angle.to_radians());
+                transform.rotate_y(-angle_delta.to_radians());
             }
 
             if movement.linear_axis != Vec2::ZERO {
@@ -226,8 +224,13 @@ pub fn update_character_controller_system(
                 ).normalize();
                 
                 let dir = (transform.rotation * axis).normalize();
-
-                d += dir * params.base_speed * delta_time;
+                let translation_delta = dir * params.base_speed * delta_time;
+                debug!("translation delta: {translation_delta}");
+        
+                match cc.translation {
+                    Some(ref mut v) => *v += translation_delta,
+                    None => cc.translation = Some(translation_delta)
+                }
             }
 
             if movement.bits & 0x01 != 0 {
@@ -237,8 +240,6 @@ pub fn update_character_controller_system(
             }
         }
 
-        debug!("d: {d}");
-        cc.translation = Some(d);
         movements.cache();
     }
 }
