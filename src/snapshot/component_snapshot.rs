@@ -7,7 +7,6 @@ use bevy_replicon::{
     client::confirm_history, 
     server::server_tick::ServerTick 
 };
-use crate::core::*;
 
 pub struct ComponentSnapshot<C: Component + Clone> {
     tick: u32,
@@ -293,106 +292,6 @@ impl<C: Component + Clone> ComponentSnapshots<C> {
         debug_assert!(self.frontier_len() == 0);
         debug_assert!(self.cache_len() <= self.cache_size);
     }
-}
-
-pub fn interpolate_translation_by_time<T: NetworkTranslation>(
-    snaps: &ComponentSnapshots<T>,
-    network_tick_delta: f64,
-    axis: TranslationAxis
-) -> anyhow::Result<Option<Vec3>> {
-    if network_tick_delta <= 0.0 {
-        bail!("invalid network tick delta");
-    }
-
-    if snaps.frontier_len() < 2 {
-        return Ok(None)
-    }
-
-    let mut iter = snaps.frontier_ref()
-    .iter()
-    .rev();
-    // frontier is longer than or equal 2
-    let latest = iter.next().unwrap();
-    
-    let now = SystemTime::now()
-    .duration_since(SystemTime::UNIX_EPOCH)?
-    .as_secs_f64();
-    let elapsed = now - latest.timestamp();
-    if elapsed < 0.0 {
-        bail!("latest snapshot is future");
-    }
-    
-    // network tick delta time = 100%
-    // elapsed = ?%
-    // into 0.0 ~ 1.0
-
-    // become 1.0 or over
-      // if we don't return here this can be extrapolation.
-      // but we are not sure should do or not 
-    if elapsed >= network_tick_delta {
-        return Ok(Some(
-            latest.component()
-            .to_vec3(axis)
-        ));
-    }
-    
-    let per = (elapsed / network_tick_delta) as f32;
-    let second = iter.next().unwrap();
-
-    let interpolated = second
-    .component()
-    .interpolate(latest.component(), per, axis);
-    Ok(Some(interpolated))
-}
-
-pub fn interpolate_rotation_by_time<R: NetworkRotation>(
-    snaps: &ComponentSnapshots<R>,
-    network_tick_delta: f64,
-    axis: RotationAxis
-) -> anyhow::Result<Option<Quat>> {
-    if network_tick_delta <= 0.0 {
-        bail!("invalid network tick delta");
-    }
-
-    if snaps.frontier_len() < 2 {
-        return Ok(None)
-    }
-
-    let mut iter = snaps.frontier_ref()
-    .iter()
-    .rev();
-    // frontier is longer than or equal 2
-    let latest = iter.next().unwrap();
-    
-    let now = SystemTime::now()
-    .duration_since(SystemTime::UNIX_EPOCH)?
-    .as_secs_f64();
-    let elapsed = now - latest.timestamp();
-    if elapsed < 0.0 {
-        bail!("latest snapshot is future");
-    }
-    
-    // network tick delta time = 100%
-    // elapsed = ?%
-    // into 0.0 ~ 1.0
-
-    // become 1.0 or over
-      // if we don't return here this can be extrapolation.
-      // but we are not sure should do or not 
-    if elapsed >= network_tick_delta {
-        return Ok(Some(
-            latest.component()
-            .to_quat(axis)
-        ));
-    }
-    
-    let per = (elapsed / network_tick_delta) as f32;
-    let second = iter.next().unwrap();
-
-    let interpolated = second
-    .component()
-    .interpolate(latest.component(), per, axis);
-    Ok(Some(interpolated))
 }
 
 pub(super) fn server_populate_component_snapshots<C: Component + Clone>(
