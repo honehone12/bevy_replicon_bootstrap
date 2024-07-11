@@ -39,7 +39,8 @@ impl Plugin for GameClientPlugin {
         .add_systems(Startup, (
             setup_light,
             setup_fixed_camera,
-            client_setup_floor
+            client_setup_floor,
+            client_setup_walls
         ))
         .add_systems(Update, (
             handle_transport_error,

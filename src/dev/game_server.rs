@@ -29,6 +29,7 @@ impl Plugin for GameServerPlugin {
         ))
         .add_systems(Startup, ( 
             server_setup_floor,
+            server_setup_walls,
             setup_ball
         ).chain())
         .add_systems(Update, (
