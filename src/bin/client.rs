@@ -1,5 +1,5 @@
 use std::net::{IpAddr, Ipv4Addr};
-use bevy::{log::{Level, LogPlugin}, prelude::*};
+use bevy::{log::LogPlugin, prelude::*};
 use bevy_replicon::prelude::*;
 use bevy_replicon_bootstrap::{
     prelude::*,
@@ -25,7 +25,7 @@ fn main() {
     
     app.add_plugins((
         DefaultPlugins.set(LogPlugin{
-            level: Level::INFO,
+            level: LOG_LEVEL,
             ..default()
         }),
     ))

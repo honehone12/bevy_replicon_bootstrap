@@ -16,7 +16,7 @@ pub use boot_system_set::*;
 pub use player_start_line::*;
 pub use latest_confirmed_tick::*;
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 use bevy::prelude::*;
 
 #[derive(Default, Clone, Copy)]
@@ -54,18 +54,32 @@ impl ReplicationConfig {
     }
 }
 
-pub trait NetworkTranslation
-: Component + LinearInterpolatable
-+ Serialize + DeserializeOwned + Clone + Default {
+pub trait NetworkTranslation: Component
++ Serialize + DeserializeOwned + Clone + Copy + Default {
+    fn from_vec3(vec: Vec3, axis: TranslationAxis) -> Self;
+    fn to_vec3(&self, axis: TranslationAxis) -> Vec3;
+    fn interpolate(&self, rhs: &Self, per: f32, axis: TranslationAxis) 
+    -> Vec3;
+}
+
+pub trait NetworkRotation: Component
++ Serialize + DeserializeOwned + Clone + Copy + Default {
+    fn from_quat(quat: Quat, axis: RotationAxis) -> Self;
+    fn to_quat(&self, axis: RotationAxis) -> Quat;
+    fn interpolate(&self, rhs: &Self, per: f32, axis: RotationAxis) 
+    -> Quat;
+}
+
+pub trait NetworkLinearVelocity: Component
++ Serialize + DeserializeOwned + Default {
     fn from_vec3(vec: Vec3, axis: TranslationAxis) -> Self;
     fn to_vec3(&self, axis: TranslationAxis) -> Vec3;
 }
 
-pub trait NetworkRotation
-: Component + LinearInterpolatable 
-+ Serialize + DeserializeOwned + Clone + Default {
-    fn from_quat(quat: Quat, axis: RotationAxis) -> Self;
-    fn to_quat(&self, axis: RotationAxis) -> Quat;
+pub trait NetworkAngularVelocity: Component
++ Serialize + DeserializeOwned + Default {
+    fn from_vec3(vec: Vec3, axis: RotationAxis) -> Self;
+    fn to_vec3(&self, axis: RotationAxis) -> Vec3;
 }
 
 pub trait NetworkMovement: NetworkEvent {

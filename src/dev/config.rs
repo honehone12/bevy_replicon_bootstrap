@@ -1,4 +1,11 @@
-use bevy::utils::{Uuid, SystemTime};
+use bevy::{
+    math::Vec3,
+    render::color::Color,
+    utils::{Uuid, SystemTime},
+    log::Level
+};
+
+pub const LOG_LEVEL: Level = Level::INFO;
 
 pub const DEV_SERVER_TICK_RATE: f32 = /*60;*/ /*1.0;*/ 20.0;
 pub const DEV_SERVER_TICK_DELTA: f32 = 1.0 / DEV_SERVER_TICK_RATE;
@@ -20,7 +27,7 @@ pub const NO_CACHE: usize = 0;
 pub const BASE_SPEED: f32 = 10.0;
 pub const BASE_ANGULAR_SPEED: f32 = 5.0; 
 
-pub const TRANSLATION_REPLICATION_THRESHOLD: f32 = 0.001;
+pub const TRANSLATION_REPLICATION_THRESHOLD: f32 = 0.00001;
 pub const ROTATION_REPLICATION_THRESHOLD: f32 = 0.001;
 
 pub const TRANSLATION_ERROR_THRESHOLD: f32 = 1.0;
@@ -74,7 +81,7 @@ pub fn get_dev_user_data() -> [u8; 256] {
 
 pub const PHYSICS_FIXED_TICK_RATE: f32 = 64.0;
 pub const PHYSICS_FIXED_TICK_DELTA: f32 = 1.0 / PHYSICS_FIXED_TICK_RATE;
-pub const PHYSICS_SUBSTEPS: usize = 6;
+pub const PHYSICS_SUBSTEPS: usize = 3;
 
 pub const CHARACTER_HALF_HIGHT: f32 = 0.5;
 pub const CHARACTER_RADIUS: f32 = 0.5;
@@ -83,3 +90,12 @@ pub const CHARACTER_OFFSET: f32 = 0.2;
 
 pub const JUMP_POWER: f32 = 45.0;
 pub const GRAVITY: f32 = -9.81;
+
+pub const BALL_MASS: f32 = 3.0;
+pub const BALL_RADIUS: f32 = 1.0;
+pub const BALL_POSITION_1: Vec3 = Vec3::new(5.0, 1.0, 0.0);
+pub const BALL_POSITION_2: Vec3 = Vec3::new(-5.0, 1.0, 0.0);
+pub const BALL_POSITION_3: Vec3 = Vec3::new(0.0, 1.0, 5.0);
+pub const BALL_POSITION_4: Vec3 = Vec3::new(0.0, 1.0, -5.0);
+pub const BALL_COLOR_1: Color = Color::BLUE;
+pub const BALL_COLOR_2: Color = Color::RED;

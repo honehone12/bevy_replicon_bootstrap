@@ -44,9 +44,11 @@ impl Plugin for GameClientPlugin {
         .add_systems(Update, (
             handle_transport_error,
             handle_player_spawned,
+            handle_ball_spawned,
             handle_input, 
             handle_action,
-            draw_cc_gizmos_system 
+            draw_net_cc_gizmos_system,
+            draw_net_rb_gizmos_system 
         ).chain());
     }
 }
@@ -156,6 +158,88 @@ fn handle_action(
     }
 }
 
+fn handle_ball_spawned(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    query: Query<(
+        Entity,
+        &NetworkRigidBody,
+        &NetworkTranslation3D,
+        &NetworkEuler,
+        Option<&NetworkLinearVelocity3D>,
+        Option<&NetworkAngularVelocity3D>,
+        &ConfirmHistory
+    ),
+        Added<Ball>
+    >,
+    axis: Res<TransformAxis>
+) {
+    for (
+        e, net_rb,
+        net_rb_trans, net_rb_rot, 
+        net_rb_linvel, net_rb_angvel,
+        confirmed_tick
+    ) in query.iter() {
+        let material = match net_rb {
+            NetworkRigidBody::ServerSimulation => materials.add(BALL_COLOR_1),
+            NetworkRigidBody::ClientPrediction
+            | NetworkRigidBody::ClientPredictionWithTransformInfo 
+            => materials.add(BALL_COLOR_2),
+        };
+
+        commands.entity(e)
+        .insert(PbrBundle{
+            mesh: meshes.add(Mesh::from(Sphere::new(BALL_RADIUS))),
+            material,
+            transform: Transform{
+                translation: net_rb_trans.0,
+                rotation: net_rb_rot.to_quat(axis.rotation),
+                ..default()
+            },
+            ..default()
+        });
+
+        let tick = confirmed_tick.last_tick()
+        .get();
+
+        match net_rb {
+            NetworkRigidBody::ServerSimulation => {
+                commands.entity(e)
+                .insert((
+                    RigidBody::KinematicPositionBased,
+                    ComponentSnapshots::<NetworkTranslation3D>::with_init(
+                        *net_rb_trans,
+                        tick, 
+                        SMALL_CACHE_SIZE
+                    ).expect("sytem time looks earlier than unix epoch"),
+                    ComponentSnapshots::<NetworkEuler>::with_init(
+                        *net_rb_rot, 
+                        tick, 
+                        SMALL_CACHE_SIZE
+                    ).expect("sytem time looks earlier than unix epoch"),
+                ))
+            } 
+            NetworkRigidBody::ClientPrediction
+            | NetworkRigidBody::ClientPredictionWithTransformInfo => {
+                commands.entity(e)
+                .insert((
+                    DynamicRigidBodyBundle::new(
+                        BALL_MASS,
+                        net_rb_linvel.unwrap_or(&default()).0, 
+                        net_rb_angvel.unwrap_or(&default()).0
+                    ),
+                ))
+            }
+        };
+
+        commands.entity(e)
+        .insert(Collider::ball(BALL_RADIUS));
+
+        info!("ball: {e:?} spwaned");
+    }
+}
+
 fn handle_player_spawned(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -164,7 +248,7 @@ fn handle_player_spawned(
         Entity,
         &NetworkEntity, 
         &PlayerPresentation, 
-        &NetworkCharacterController, 
+        &NetworkTranslation3D, 
         &NetworkAngle,
         &ConfirmHistory
     ), 
@@ -235,21 +319,44 @@ fn handle_player_spawned(
         
         entity_player_map.try_insert(entity, client_id)
         .expect("same entity is already mapped");
-    
+
         info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
     } 
 }
 
-fn draw_cc_gizmos_system(
-    query: Query<&NetworkCharacterController>,
+fn draw_net_cc_gizmos_system(
+    query: Query<&NetworkTranslation3D>,
     mut gizmos: Gizmos
 ) {
-    for cc in query.iter() {
+    for net_trans in query.iter() {
         gizmos.sphere(
-            cc.0, 
+            net_trans.0, 
             Quat::IDENTITY, 
             CHARACTER_RADIUS,
             Color::GREEN 
         );
+    }
+}
+
+fn draw_net_rb_gizmos_system(
+    query: Query<(
+        &NetworkRigidBody,
+        &NetworkTranslation3D
+    )>,
+    mut gizmos: Gizmos
+) {
+    for (rb, rb_trans) in query.iter() {
+        if matches!(
+            rb,
+            NetworkRigidBody::ServerSimulation
+            | NetworkRigidBody::ClientPredictionWithTransformInfo
+        ) {
+            gizmos.sphere(
+                rb_trans.0, 
+                Quat::IDENTITY, 
+                BALL_RADIUS,
+                Color::GREEN 
+            );  
+        }
     }
 }

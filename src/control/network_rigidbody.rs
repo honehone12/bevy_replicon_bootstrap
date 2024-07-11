@@ -1,20 +1,36 @@
 use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
+use crate::core::*;
 
 #[derive(Component, Serialize, Deserialize)]
 pub enum NetworkRigidBody {
     ServerSimulation,
-    ClientPrediction
+    ClientPrediction,
+    ClientPredictionWithTransformInfo,
 }
 
 #[derive(Component, Serialize, Deserialize, Default)]
-pub struct NetworkRBLinearVelocity3D(Vec3);
+pub struct NetworkLinearVelocity3D(pub Vec3);
+
+impl NetworkLinearVelocity for NetworkLinearVelocity3D {
+    fn from_vec3(vec: Vec3, _: TranslationAxis) -> Self {
+        Self(vec)
+    }
+
+    fn to_vec3(&self, _: TranslationAxis) -> Vec3 {
+        self.0
+    }
+}
 
 #[derive(Component, Serialize, Deserialize, Default)]
-pub struct NetworkRBAngularVelocity3D(pub Vec3);
+pub struct NetworkAngularVelocity3D(pub Vec3);
 
-#[derive(Component, Serialize, Deserialize, Default)]
-pub struct NetworkRBTranslation3D(pub Vec3);
+impl NetworkAngularVelocity for NetworkAngularVelocity3D {
+    fn from_vec3(vec: Vec3, _: RotationAxis) -> Self {
+        Self(vec)
+    }
 
-#[derive(Component, Serialize, Deserialize, Default)]
-pub struct NetworkRBRotation3D(pub Vec3);
+    fn to_vec3(&self, _: RotationAxis) -> Vec3 {
+        self.0
+    }
+}

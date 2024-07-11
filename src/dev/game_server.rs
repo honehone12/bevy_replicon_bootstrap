@@ -27,9 +27,10 @@ impl Plugin for GameServerPlugin {
             },
             RelevantGroupPlugin::<PlayerGroup>::new()
         ))
-        .add_systems(Startup, 
-            server_setup_floor
-        )
+        .add_systems(Startup, ( 
+            server_setup_floor,
+            setup_ball
+        ).chain())
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
@@ -37,6 +38,72 @@ impl Plugin for GameServerPlugin {
             handle_fire
         ).chain());
     }
+}
+
+fn setup_ball(mut commands: Commands) {
+    let ball_1 = commands.spawn((
+        Replicated,
+        Culling::Disable,
+        Ball,
+        TransformBundle::from_transform(Transform{
+            translation: BALL_POSITION_1,
+            ..default()
+        }),
+        DynamicRigidBodyBundle::new(
+            BALL_MASS, 
+            Vec3::ZERO, 
+            Vec3::ZERO
+        ),
+        NetworkRigidBody::ServerSimulation,
+        NetworkTranslationBundle::<NetworkTranslation3D>::new(
+            BALL_POSITION_1, 
+            TranslationAxis::Default, 
+            0, 
+            LARGE_CACHE_SIZE
+        ).expect("sytem time looks earlier than unix epoch"),
+        NetworkRotationBundle::<NetworkEuler>::new(
+            Quat::IDENTITY, 
+            RotationAxis::Default, 
+            0, 
+            LARGE_CACHE_SIZE
+        ).expect("sytem time looks earlier than unix epoch"),
+        Collider::ball(BALL_RADIUS)
+    ))
+    .id();
+    info!("ball 1: {ball_1:?} spawned");
+
+    let ball_2 = commands.spawn((
+        Replicated,
+        Culling::Disable,
+        Ball,
+        TransformBundle::from_transform(Transform{
+            translation: BALL_POSITION_2,
+            ..default()
+        }),
+        DynamicRigidBodyBundle::new(
+            BALL_MASS, 
+            Vec3::ZERO, 
+            Vec3::ZERO
+        ),
+        NetworkRigidBody::ClientPredictionWithTransformInfo,
+        NetworkTranslationBundle::<NetworkTranslation3D>::new(
+            BALL_POSITION_2, 
+            TranslationAxis::Default, 
+            0, 
+            LARGE_CACHE_SIZE
+        ).expect("sytem time looks earlier than unix epoch"),
+        NetworkRotationBundle::<NetworkEuler>::new(
+            Quat::IDENTITY, 
+            RotationAxis::Default, 
+            0, 
+            LARGE_CACHE_SIZE
+        ).expect("sytem time looks earlier than unix epoch"),
+        NetworkLinearVelocity3D::default(),
+        NetworkAngularVelocity3D::default(),
+        Collider::ball(BALL_RADIUS)
+    ))
+    .id();
+    info!("ball 2: {ball_2:?} spwaned");
 }
 
 fn handle_server_event(
@@ -106,14 +173,14 @@ fn handle_player_entity_event(
                     CHARACTER_MASS
                 ),
                 Jump::default(),
-                NetworkTranslationBundle::<NetworkCharacterController>::new(
+                NetworCharacterkTranslationBundle::<NetworkTranslation3D>::new(
                     player_start.translation,
-                    default(), 
+                    TranslationAxis::Default, 
                     tick, 
                     LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
-                NetworkRotationBundle::<NetworkAngle>::new(
-                    default(), 
+                NetworkCharacterRotationBundle::<NetworkAngle>::new(
+                    Quat::IDENTITY, 
                     RotationAxis::Z,
                     tick, 
                     LARGE_CACHE_SIZE
@@ -136,7 +203,7 @@ fn handle_fire(
     )>,
     query: Query<(
         &NetworkEntity, 
-        &ComponentSnapshots<NetworkCharacterController>
+        &ComponentSnapshots<NetworkTranslation3D>
     )>,
 ) {
     // *******************************

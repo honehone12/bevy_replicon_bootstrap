@@ -4,7 +4,7 @@ use std::{
 };
 use bevy::{
     app::ScheduleRunnerPlugin, 
-    log::{Level, LogPlugin}, 
+    log::LogPlugin, 
     prelude::*
 };
 use bevy_replicon::prelude::*;
@@ -30,7 +30,7 @@ fn main() {
             Duration::from_secs_f32(DEV_SERVER_TICK_DELTA)
         )),
         LogPlugin{
-            level: Level::INFO,
+            level: LOG_LEVEL,
             ..default()
         }
     ))

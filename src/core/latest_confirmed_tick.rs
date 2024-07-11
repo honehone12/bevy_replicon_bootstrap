@@ -31,7 +31,7 @@ pub(crate) fn latest_confirmed_tick_system(
     for confirm in query.iter() {
         let tick = confirm.last_tick();
         if latest_confirmed.try_set(tick) {
-            debug!("updated lates confirmed tick: {tick:?}");
+            debug!("updated latest confirmed tick: {tick:?}");
         }
     }
 }

@@ -8,7 +8,7 @@ use bevy_replicon::{
     client::confirm_history, 
     server::server_tick::ServerTick 
 };
-use crate::core::LinearInterpolatable;
+use crate::core::*;
 
 #[derive(Deserialize, Serialize)]
 pub struct ComponentSnapshot<C: Component> {
@@ -88,6 +88,56 @@ impl<C: Component> ComponentSnapshots<C> {
         }
 
         self.frontier.get(len - 1)
+    }
+
+    #[inline]
+    pub fn frontier_back_pair(&self) 
+    -> Option<(&ComponentSnapshot<C>, &ComponentSnapshot<C>)> {
+        let len = self.frontier_len(); 
+        if len < 2 {
+            return None;
+        }
+
+        // frontier is longer than or equal 2
+        Some((
+            self.frontier.get(len - 1)
+            .unwrap(), 
+            self.frontier.get(len - 2)
+            .unwrap()
+        ))
+    }
+
+    #[inline]
+    pub fn elapsed(&self) -> anyhow::Result<f64> {
+        if self.frontier_len() == 0 {
+            bail!("frontier is empty");
+        }
+        
+        // frontier is not empty
+        let back = self.frontier_back()
+        .unwrap();
+
+        let now = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs_f64();
+        let elapsed = now - back.timestamp();
+        if elapsed < 0.0 {
+            bail!("back is future");
+        }
+        
+        Ok(elapsed)
+    }
+
+    #[inline]
+    pub fn elapsed_per_network_tick(&self, network_tick_delta: f64)
+    -> anyhow::Result<f32> {
+        if network_tick_delta == 0.0 {
+            bail!("invalid network tick delta");
+        }
+        
+        let elapsed = self.elapsed()?;
+        let per = (elapsed / network_tick_delta) as f32;
+        Ok(per)
     }
 
     #[inline]
@@ -247,10 +297,11 @@ impl<C: Component> ComponentSnapshots<C> {
     }
 }
 
-pub fn linear_interpolate_by_time<C: LinearInterpolatable>(
-    snaps: &ComponentSnapshots<C>,
-    network_tick_delta: f64
-) -> anyhow::Result<Option<C>> {
+pub fn interpolate_translation_by_time<T: NetworkTranslation>(
+    snaps: &ComponentSnapshots<T>,
+    network_tick_delta: f64,
+    axis: TranslationAxis
+) -> anyhow::Result<Option<Vec3>> {
     if network_tick_delta <= 0.0 {
         bail!("invalid network tick delta");
     }
@@ -283,7 +334,7 @@ pub fn linear_interpolate_by_time<C: LinearInterpolatable>(
     if elapsed >= network_tick_delta {
         return Ok(Some(
             latest.component()
-            .clone()
+            .to_vec3(axis)
         ));
     }
     
@@ -292,7 +343,57 @@ pub fn linear_interpolate_by_time<C: LinearInterpolatable>(
 
     let interpolated = second
     .component()
-    .linear_interpolate(latest.component(), per);
+    .interpolate(latest.component(), per, axis);
+    Ok(Some(interpolated))
+}
+
+pub fn interpolate_rotation_by_time<R: NetworkRotation>(
+    snaps: &ComponentSnapshots<R>,
+    network_tick_delta: f64,
+    axis: RotationAxis
+) -> anyhow::Result<Option<Quat>> {
+    if network_tick_delta <= 0.0 {
+        bail!("invalid network tick delta");
+    }
+
+    if snaps.frontier_len() < 2 {
+        return Ok(None)
+    }
+
+    let mut iter = snaps.frontier_ref()
+    .iter()
+    .rev();
+    // frontier is longer than or equal 2
+    let latest = iter.next().unwrap();
+    
+    let now = SystemTime::now()
+    .duration_since(SystemTime::UNIX_EPOCH)?
+    .as_secs_f64();
+    let elapsed = now - latest.timestamp();
+    if elapsed < 0.0 {
+        bail!("latest snapshot is future");
+    }
+    
+    // network tick delta time = 100%
+    // elapsed = ?%
+    // into 0.0 ~ 1.0
+
+    // become 1.0 or over
+      // if we don't return here this can be extrapolation.
+      // but we are not sure should do or not 
+    if elapsed >= network_tick_delta {
+        return Ok(Some(
+            latest.component()
+            .to_quat(axis)
+        ));
+    }
+    
+    let per = (elapsed / network_tick_delta) as f32;
+    let second = iter.next().unwrap();
+
+    let interpolated = second
+    .component()
+    .interpolate(latest.component(), per, axis);
     Ok(Some(interpolated))
 }
 

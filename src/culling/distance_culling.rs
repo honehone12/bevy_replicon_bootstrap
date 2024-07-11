@@ -93,10 +93,6 @@ fn culling_system(
     config: Res<CullingConfig>,
     mut connected_clients: ResMut<ConnectedClients>
 ) {
-    if !distance_map.is_changed() {
-        return;
-    }
-
     for (player_e, player_net_e) in player_views.iter() {
         let client_id = player_net_e.client_id();
         let visibility = match connected_clients.get_client_mut(client_id) {
@@ -121,7 +117,6 @@ fn culling_system(
                     }
                     continue;    
                 }
-                
             };
 
             let distance = match distance_map.get(player_e, e) {

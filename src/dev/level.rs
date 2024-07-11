@@ -1,13 +1,13 @@
-use bevy::{math::{vec3, Quat}, prelude::*};
+use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use crate::core::PlayerStart;
 
-pub const FLOOR_SIZE: Vec3 = vec3(50.0, 1.0, 50.0);
+pub const FLOOR_SIZE: Vec3 = Vec3::new(50.0, 1.0, 50.0);
 pub const FLOOR_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
-pub const FLOOR_POSITION: Vec3 = vec3(0.0, -0.5, 0.0);
-pub const LIGHT_POSITION: Vec3 = vec3(0.0, 50.0, 0.0);
+pub const FLOOR_POSITION: Vec3 = Vec3::new(0.0, -0.5, 0.0);
+pub const LIGHT_POSITION: Vec3 = Vec3::new(0.0, 50.0, 0.0);
 pub const LIGHT_ROTATION_X: f32 = -std::f32::consts::PI / 4.0;
-pub const CAMERA_POSITION: Vec3 = vec3(0.0, 70.0, 25.0);
+pub const CAMERA_POSITION: Vec3 = Vec3::new(0.0, 70.0, 25.0);
 
 pub fn client_setup_floor(
     mut commands: Commands,
@@ -64,10 +64,10 @@ pub fn setup_fixed_camera(mut commands: Commands) {
     });
 }
 
-pub const SPAWN_POSITION_0: Vec3 = vec3(-10.0, 1.5, -10.0);
-pub const SPAWN_POSITION_1: Vec3 = vec3(10.0, 1.5, -10.0);
-pub const SPAWN_POSITION_2: Vec3 = vec3(10.0, 1.5, 10.0);
-pub const SPAWN_POSITION_3: Vec3 = vec3(-10.0, 1.5, 10.0);
+pub const SPAWN_POSITION_0: Vec3 = Vec3::new(-10.0, 1.5, -10.0);
+pub const SPAWN_POSITION_1: Vec3 = Vec3::new(10.0, 1.5, -10.0);
+pub const SPAWN_POSITION_2: Vec3 = Vec3::new(10.0, 1.5, 10.0);
+pub const SPAWN_POSITION_3: Vec3 = Vec3::new(-10.0, 1.5, 10.0);
 
 pub const PLAYER_START_0: PlayerStart = PlayerStart{
     translation: SPAWN_POSITION_0,

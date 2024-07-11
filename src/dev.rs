@@ -45,19 +45,23 @@ impl Plugin for GameCommonPlugin {
             }
         ))
         .add_plugins((
-            NetworkTranslationPlugin::<
-                NetworkCharacterController,
+            NetworkCharacterTranslationPlugin::<
+                NetworkTranslation3D,
                 NetworkMovement2_5D
             >::new(),
-            NetworkRotationPlugin::<
+            NetworkCharacterRotationPlugin::<
                 NetworkAngle,
                 NetworkMovement2_5D
             >::new(),
+            
+            NetworkLinearVelocityPlugin::<NetworkLinearVelocity3D>::new(),
+            NetworkAngularVelocityPlugin::<NetworkAngularVelocity3D>::new(),
 
             ClientEventPlugin::<NetworkMovement2_5D>::new(ChannelKind::Unreliable),
             ClientEventPlugin::<NetworkFire>::new(ChannelKind::Ordered),
         ))
         .replicate::<PlayerPresentation>()
+        .replicate::<Ball>()
         .add_systems(FixedUpdate,(
             ground_check_system,
             update_character_controller_system,
@@ -144,6 +148,9 @@ impl NetworkEvent for NetworkFire {
     }
 }
 
+#[derive(Component, Serialize, Deserialize)]
+pub struct Ball;
+
 pub fn ground_check_system(
     mut query: Query<(
         &Transform,
@@ -193,6 +200,11 @@ pub fn update_character_controller_system(
         movements.sort_frontier_by_index();
         let delta_time = time.delta_seconds();
 
+        let mut d = match cc.translation {
+            None => Vec3::ZERO,
+            Some(v) => v
+        };
+
         for snap in movements.frontier_ref()
         .iter() {
             let movement = snap.event();
@@ -201,13 +213,9 @@ pub fn update_character_controller_system(
                 let mut angle = movement.rotation_axis.x;
                 angle *= params.base_angular_speed * delta_time;
 
+                debug!("angle: {angle}");
                 transform.rotate_y(-angle.to_radians());
             }
-
-            let mut d = match cc.translation {
-                None => Vec3::ZERO,
-                Some(v) => v
-            };
 
             if movement.linear_axis != Vec2::ZERO {
                 let axis = Vec3::new(
@@ -216,7 +224,7 @@ pub fn update_character_controller_system(
                     -movement.linear_axis.y
                 ).normalize();
                 
-                let dir = transform.rotation.normalize() * axis;
+                let dir = (transform.rotation * axis).normalize();
 
                 d += dir * params.base_speed * delta_time;
             }
@@ -226,10 +234,10 @@ pub fn update_character_controller_system(
                     jump.power = JUMP_POWER;    
                 }    
             }
-
-            cc.translation = Some(d);
         }
 
+        debug!("d: {d}");
+        cc.translation = Some(d);
         movements.cache();
     }
 }
@@ -242,16 +250,20 @@ pub fn apply_gravity_system(
     time: Res<Time<Fixed>>
 ) {
     for (mut cc, mut jump) in query.iter_mut() {
+        if jump.grounded && jump.power != JUMP_POWER {
+            if jump.power != 0.0 {
+                jump.power = 0.0;
+            }
+            
+            continue;   
+        }
+
         let delta_time = time.delta_seconds();
         let mass = cc.custom_mass.unwrap_or(1.0);
         let g = GRAVITY * mass * delta_time;
-
         let dy = jump.power * delta_time + g;
         jump.power += g;
-        if jump.grounded && jump.power < 0.0 {
-            jump.power = 0.0;
-        }
-
+        
         match cc.translation {
             Some(ref mut v) => v.y += dy,
             None => cc.translation = Some(Vec3::new(0.0, dy, 0.0))
