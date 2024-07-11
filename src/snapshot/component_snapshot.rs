@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use anyhow::bail;
 use bevy::{
     prelude::*,
@@ -10,14 +9,13 @@ use bevy_replicon::{
 };
 use crate::core::*;
 
-#[derive(Deserialize, Serialize)]
-pub struct ComponentSnapshot<C: Component> {
+pub struct ComponentSnapshot<C: Component + Clone> {
     tick: u32,
     timestamp: f64,
     component: C,
 }
 
-impl<C: Component> ComponentSnapshot<C> {
+impl<C: Component + Clone> ComponentSnapshot<C> {
     #[inline]
     pub fn new(component: C, timestamp: f64, tick: u32) -> Self {
         Self{ 
@@ -43,14 +41,14 @@ impl<C: Component> ComponentSnapshot<C> {
     }
 }
 
-#[derive(Component, Deserialize, Serialize)]
-pub struct ComponentSnapshots<C: Component> {
+#[derive(Component)]
+pub struct ComponentSnapshots<C: Component + Clone> {
     frontier: Vec<ComponentSnapshot<C>>,
     cache: Vec<ComponentSnapshot<C>>,
     cache_size: usize
 }
 
-impl<C: Component> ComponentSnapshots<C> {
+impl<C: Component + Clone> ComponentSnapshots<C> {
     #[inline]
     pub fn with_capacity(cache_size: usize) -> Self {
         Self{
