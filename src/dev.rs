@@ -53,7 +53,8 @@ impl Plugin for GameCommonPlugin {
                 NetworkAngle,
                 NetworkMovement2_5D
             >::new(),
-            
+            NetworkRotationPlugin::<NetworkEuler>::new(),
+
             NetworkLinearVelocityPlugin::<NetworkLinearVelocity3D>::new(),
             NetworkAngularVelocityPlugin::<NetworkAngularVelocity3D>::new(),
 
