@@ -50,7 +50,7 @@ impl Plugin for GameCommonPlugin {
                 NetworkMovement2_5D
             >::new(),
             NetworkCharacterRotationPlugin::<
-                NetworkAngle,
+                NetworkAngleDegrees,
                 NetworkMovement2_5D
             >::new(),
             NetworkRotationPlugin::<NetworkEuler>::new(),

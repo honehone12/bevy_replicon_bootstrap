@@ -178,7 +178,7 @@ fn handle_player_entity_event(
                     tick, 
                     LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
-                NetworkCharacterRotationBundle::<NetworkAngle>::new(
+                NetworkCharacterRotationBundle::<NetworkAngleDegrees>::new(
                     Quat::IDENTITY, 
                     RotationAxis::Z,
                     tick, 

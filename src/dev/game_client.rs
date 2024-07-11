@@ -246,7 +246,7 @@ fn handle_player_spawned(
         &NetworkEntity, 
         &PlayerPresentation, 
         &NetworkTranslation3D, 
-        &NetworkAngle,
+        &NetworkAngleDegrees,
         &ConfirmHistory
     ), 
         Added<NetworkEntity>

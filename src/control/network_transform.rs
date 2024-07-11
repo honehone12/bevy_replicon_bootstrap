@@ -53,9 +53,9 @@ impl NetworkTranslation for NetworkTranslation3D {
 }
 
 #[derive(Component, Serialize, Deserialize, Default, Clone, Copy)]
-pub struct NetworkAngle(pub f32);
+pub struct NetworkAngleDegrees(pub f32);
 
-impl NetworkRotation for NetworkAngle {
+impl NetworkRotation for NetworkAngleDegrees {
     #[inline]
     fn from_quat(quat: Quat, axis: RotationAxis) -> Self {
         match axis {
