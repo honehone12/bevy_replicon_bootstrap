@@ -6,7 +6,6 @@ pub(crate) fn apply_rb_linear_velocity_system<L>(
     mut query: Query<(
         &Sleeping,
         &Velocity,
-        &NetworkRigidBody,
         &mut L
     ), 
         With<RigidBody>
@@ -14,11 +13,7 @@ pub(crate) fn apply_rb_linear_velocity_system<L>(
     axis: Res<TransformAxis>
 )
 where L: NetworkLinearVelocity {
-    for (sleep, vel, net_rb, mut net_linvel) in query.iter_mut() {
-        if matches!(net_rb, NetworkRigidBody::ServerSimulation) {
-            continue;
-        }
-
+    for (sleep, vel, mut net_linvel) in query.iter_mut() {
         if sleep.sleeping {
             continue;
         }
@@ -31,7 +26,6 @@ pub(crate) fn apply_rb_angular_velocity_system<A>(
     mut query: Query<(
         &Sleeping,
         &Velocity,
-        &NetworkRigidBody,
         &mut A
     ), 
         With<RigidBody>
@@ -39,11 +33,7 @@ pub(crate) fn apply_rb_angular_velocity_system<A>(
     axis: Res<TransformAxis>
 )
 where A: NetworkAngularVelocity {
-    for (sleep, vel, net_rb, mut net_angvel) in query.iter_mut() {
-        if matches!(net_rb, NetworkRigidBody::ServerSimulation) {
-            continue;
-        }
-
+    for (sleep, vel, mut net_angvel) in query.iter_mut() {
         if sleep.sleeping {
             continue;
         }
@@ -53,43 +43,27 @@ where A: NetworkAngularVelocity {
 }
 
 pub(crate) fn apply_netrb_linear_velocity_system<L>(
-    mut query: Query<(
-        &mut Velocity,
-        &NetworkRigidBody,
-        &L
-    ), (
-        Changed<L>,
-        With<RigidBody>
-    )>,
+    mut query: Query<
+        (&mut Velocity, &L), 
+        (Changed<L>, With<RigidBody>)
+    >,
     axis: Res<TransformAxis>
 )
 where L: NetworkLinearVelocity {
-    for (mut vel, net_rb, net_linvel) in query.iter_mut() {
-        if matches!(net_rb, NetworkRigidBody::ServerSimulation) {
-            continue;
-        }
-
+    for (mut vel, net_linvel) in query.iter_mut() {
         vel.linvel = net_linvel.to_vec3(axis.translation);
     }
 }
 
 pub(crate) fn apply_netrb_angular_velocity_system<A>(
-    mut query: Query<(
-        &mut Velocity,
-        &NetworkRigidBody,
-        &A
-    ), (
-        Changed<A>,
-        With<RigidBody>
-    )>,
+    mut query: Query<
+        (&mut Velocity, &A), 
+        (Changed<A>, With<RigidBody>)
+    >,
     axis: Res<TransformAxis>
 )
 where A: NetworkAngularVelocity {
-    for (mut vel, net_rb, net_angvel) in query.iter_mut() {
-        if matches!(net_rb, NetworkRigidBody::ServerSimulation) {
-            continue;
-        }
-
+    for (mut vel, net_angvel) in query.iter_mut() {
         vel.angvel = net_angvel.to_vec3(axis.rotation);    
     }
 }

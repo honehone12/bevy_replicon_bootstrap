@@ -47,8 +47,7 @@ impl Plugin for GameClientPlugin {
             handle_ball_spawned,
             handle_input, 
             handle_action,
-            draw_net_cc_gizmos_system,
-            draw_net_rb_gizmos_system 
+            draw_network_translation_gizmos_system
         ).chain());
     }
 }
@@ -164,7 +163,7 @@ fn handle_ball_spawned(
     mut materials: ResMut<Assets<StandardMaterial>>,
     query: Query<(
         Entity,
-        &NetworkRigidBody,
+        &Ball,
         &NetworkTranslation3D,
         &NetworkEuler,
         Option<&NetworkLinearVelocity3D>,
@@ -176,16 +175,14 @@ fn handle_ball_spawned(
     axis: Res<TransformAxis>
 ) {
     for (
-        e, net_rb,
+        e, ball,
         net_rb_trans, net_rb_rot, 
         net_rb_linvel, net_rb_angvel,
         confirmed_tick
     ) in query.iter() {
-        let material = match net_rb {
-            NetworkRigidBody::ServerSimulation => materials.add(BALL_COLOR_1),
-            NetworkRigidBody::ClientPrediction
-            | NetworkRigidBody::ClientPredictionWithTransformInfo 
-            => materials.add(BALL_COLOR_2),
+        let material = match ball {
+            Ball::ServerSimulation => materials.add(BALL_COLOR_1),
+            Ball::ClientPrediction => materials.add(BALL_COLOR_2),
         };
 
         commands.entity(e)
@@ -203,8 +200,8 @@ fn handle_ball_spawned(
         let tick = confirmed_tick.last_tick()
         .get();
 
-        match net_rb {
-            NetworkRigidBody::ServerSimulation => {
+        match ball {
+            Ball::ServerSimulation => {
                 commands.entity(e)
                 .insert((
                     RigidBody::KinematicPositionBased,
@@ -220,8 +217,7 @@ fn handle_ball_spawned(
                     ).expect("sytem time looks earlier than unix epoch"),
                 ))
             } 
-            NetworkRigidBody::ClientPrediction
-            | NetworkRigidBody::ClientPredictionWithTransformInfo => {
+            Ball::ClientPrediction => {
                 commands.entity(e)
                 .insert((
                     DynamicRigidBodyBundle::new(
@@ -324,39 +320,18 @@ fn handle_player_spawned(
     } 
 }
 
-fn draw_net_cc_gizmos_system(
+fn draw_network_translation_gizmos_system(
     query: Query<&NetworkTranslation3D>,
     mut gizmos: Gizmos
 ) {
+    const  RADIUS: f32 = 1.0;
+
     for net_trans in query.iter() {
         gizmos.sphere(
             net_trans.0, 
             Quat::IDENTITY, 
-            CHARACTER_RADIUS,
+            RADIUS,
             Color::GREEN 
         );
-    }
-}
-
-fn draw_net_rb_gizmos_system(
-    query: Query<(
-        &NetworkRigidBody,
-        &NetworkTranslation3D
-    )>,
-    mut gizmos: Gizmos
-) {
-    for (rb, rb_trans) in query.iter() {
-        if matches!(
-            rb,
-            NetworkRigidBody::ServerSimulation
-            | NetworkRigidBody::ClientPredictionWithTransformInfo
-        ) {
-            gizmos.sphere(
-                rb_trans.0, 
-                Quat::IDENTITY, 
-                BALL_RADIUS,
-                Color::GREEN 
-            );  
-        }
     }
 }

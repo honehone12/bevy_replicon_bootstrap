@@ -76,8 +76,7 @@ impl Plugin for NetworkBootPlugin {
             ServerBootSet::ApplyLocalChange
             .before(ServerBootSet::Cache)
         )
-        .replicate::<NetworkEntity>()
-        .replicate::<NetworkRigidBody>();
+        .replicate::<NetworkEntity>();
 
         if app.world.contains_resource::<RepliconClient>() {
             app.insert_resource(LatestConfirmedTick::default())

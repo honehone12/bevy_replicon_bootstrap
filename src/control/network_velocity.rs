@@ -2,13 +2,6 @@ use bevy::prelude::*;
 use serde::{Serialize, Deserialize};
 use crate::core::*;
 
-#[derive(Component, Serialize, Deserialize)]
-pub enum NetworkRigidBody {
-    ServerSimulation,
-    ClientPrediction,
-    ClientPredictionWithTransformInfo,
-}
-
 #[derive(Component, Serialize, Deserialize, Default)]
 pub struct NetworkLinearVelocity3D(pub Vec3);
 

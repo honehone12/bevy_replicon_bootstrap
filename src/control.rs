@@ -1,11 +1,11 @@
 pub mod network_transform;
-pub mod network_rigidbody;
+pub mod network_velocity;
 pub mod network_movement;
 pub(crate) mod systems;
 pub(crate) mod physics_systems;
 
 pub use network_transform::*;
-pub use network_rigidbody::*;
+pub use network_velocity::*;
 pub use network_movement::*;
 pub(crate) use systems::*;
 pub(crate) use physics_systems::*;

@@ -54,7 +54,6 @@ fn setup_ball(mut commands: Commands) {
             Vec3::ZERO, 
             Vec3::ZERO
         ),
-        NetworkRigidBody::ServerSimulation,
         NetworkTranslationBundle::<NetworkTranslation3D>::new(
             BALL_POSITION_1, 
             TranslationAxis::Default, 
@@ -85,7 +84,6 @@ fn setup_ball(mut commands: Commands) {
             Vec3::ZERO, 
             Vec3::ZERO
         ),
-        NetworkRigidBody::ClientPredictionWithTransformInfo,
         NetworkTranslationBundle::<NetworkTranslation3D>::new(
             BALL_POSITION_2, 
             TranslationAxis::Default, 
