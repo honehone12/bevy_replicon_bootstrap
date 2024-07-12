@@ -211,7 +211,7 @@ E: NetworkMovement {
             );   
         } else if app.world.contains_resource::<RepliconClient>() {
             app.add_systems(PreUpdate, (
-                handle_correct_translation::<T>,
+                handle_correct_translation::<T, E>,
             ).in_set(ClientBootSet::ApplyReplication));
         } else {
             panic!("could not find replicon server nor client");
@@ -249,7 +249,7 @@ E: NetworkMovement {
             );
         } else if app.world.contains_resource::<RepliconClient>() {
             app.add_systems(PreUpdate, (
-                handle_correct_rotation::<R>
+                handle_correct_rotation::<R, E>
             ).in_set(ClientBootSet::ApplyReplication));
         } else {
             panic!("could not find replicon server nor client");

@@ -27,20 +27,21 @@ where R: NetworkRotation {
 
 pub(crate) fn apply_transform_translation_system<T>(
     mut query: Query<
-        (&Transform, &mut T, &ComponentSnapshots<T>), 
+        (&Transform, &mut T, &mut ComponentSnapshots<T>), 
         Changed<Transform>
     >,
     config: Res<ReplicationConfig>,
     axis: Res<TransformAxis>
 )
 where T: NetworkTranslation {
-    for (transform, mut t, snaps) in query.iter_mut() {
+    for (transform, mut t, mut snaps) in query.iter_mut() {
         match snaps.latest_snapshot() {
             Some(s) => {
                 if s.component()
                 .to_vec3(axis.translation)
                 .distance_squared(transform.translation) 
                 <= config.translation_threshold_sq() {
+                    snaps.cache();
                     continue;
                 }
             }
@@ -48,20 +49,21 @@ where T: NetworkTranslation {
         }
 
         *t = T::from_vec3(transform.translation, axis.translation);
+        snaps.cache();
         debug!("updated translation: {}", transform.translation);
     }
 }
 
 pub(crate) fn apply_transform_rotation_system<R>(
     mut query: Query<
-        (&Transform, &mut R, &ComponentSnapshots<R>),
+        (&Transform, &mut R, &mut ComponentSnapshots<R>),
         Changed<Transform>
     >,
     config: Res<ReplicationConfig>,
     axis: Res<TransformAxis>
 )
 where R: NetworkRotation {
-    for (transform, mut r, snaps) in query.iter_mut() {
+    for (transform, mut r, mut snaps) in query.iter_mut() {
         match snaps.latest_snapshot() {
             Some(s) => {
                 if s.component()
@@ -70,6 +72,7 @@ where R: NetworkRotation {
                 .angle_between(transform.rotation.normalize())
                 .abs()
                 <= config.rotation_threashold.to_radians() {
+                    snaps.cache();
                     continue;
                 }
             }
@@ -77,6 +80,7 @@ where R: NetworkRotation {
         }
 
         *r = R::from_quat(transform.rotation, axis.rotation);
+        snaps.cache();
         debug!("updated rotation: {}", transform.rotation);
     } 
 }
@@ -239,7 +243,12 @@ E: NetworkMovement {
         if trans_err > config.translation_threshold_sq() {
             trans_pred_err.increment_count();
             if trans_pred_err.get_count() > config.force_replicate_error_count {
-                warn!("sending translation force replication for: {:?}", net_e.client_id());
+                warn!(
+                    "sending translation force replication for: {:?}: {}:{}", 
+                    net_e.client_id(),
+                    movements.frontier_front().unwrap().index(),
+                    movements.frontier_back().unwrap().index()
+                );
                 trans_force_repl.send(ToClients{ 
                     mode: SendMode::Direct(net_e.client_id()), 
                     event: default()
@@ -330,7 +339,12 @@ E: NetworkMovement {
         if rot_err > config.rotation_threshold {
             rot_pred_err.increment_count();
             if rot_pred_err.get_count() > config.force_replicate_error_count {
-                warn!("sending rotation force replication for: {:?}", net_e.client_id());
+                warn!(
+                    "sending rotation force replication for: {:?}: {}:{}", 
+                    net_e.client_id(),
+                    movements.frontier_front().unwrap().index(),
+                    movements.frontier_back().unwrap().index()
+                );
                 rot_force_repl.send(ToClients{
                     mode: SendMode::Direct(net_e.client_id()),
                     event: default()
@@ -344,30 +358,62 @@ E: NetworkMovement {
     } 
 }
 
-pub(crate) fn handle_correct_translation<T>(
-    mut query: Query<(&mut Transform, &T), With<Owning>>,
+pub(crate) fn handle_correct_translation<T, E>(
+    mut query: Query<(
+        &mut Transform, 
+        &T,
+        &EventSnapshots<E>
+    ), 
+        With<Owning>
+    >,
     mut force_replication: EventReader<ForceReplicateTranslation<T>>,
     axis: Res<TransformAxis>
 )
-where T: NetworkTranslation {
+where 
+T: NetworkTranslation,
+E: NetworkMovement {
     for _ in force_replication.read() {
-        if let Ok((mut transform, net_translation)) = query.get_single_mut() {
+        if let Ok((
+            mut transform, 
+            net_translation,
+            movements
+        )) = query.get_single_mut() {
             transform.translation = net_translation.to_vec3(axis.translation);
-            warn!("force replicated translation");
+            warn!(
+                "force replicated translation: {}:{}",
+                movements.frontier_front().unwrap().index(),
+                movements.frontier_back().unwrap().index()
+            );
         }
     }
 }
 
-pub(crate) fn handle_correct_rotation<R>(
-    mut query: Query<(&mut Transform, &R), With<Owning>>,
+pub(crate) fn handle_correct_rotation<R, E>(
+    mut query: Query<(
+        &mut Transform, 
+        &R,
+        &EventSnapshots<E>
+    ), 
+        With<Owning>
+    >,
     mut force_replication: EventReader<ForceReplicateRotation<R>>,
     axis: Res<TransformAxis>
 )
-where R: NetworkRotation {
+where 
+R: NetworkRotation,
+E: NetworkMovement {
     for _ in force_replication.read() {
-        if let Ok((mut transform, net_rotation)) = query.get_single_mut() {
+        if let Ok((
+            mut transform, 
+            net_rotation,
+            movements
+        )) = query.get_single_mut() {
             transform.rotation = net_rotation.to_quat(axis.rotation);
-            warn!("force replicated rotation");
+            warn!(
+                "force replicated rotation: {}:{}",
+                movements.frontier_front().unwrap().index(),
+                movements.frontier_back().unwrap().index()
+            );
         }
     }
 }
