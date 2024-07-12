@@ -7,9 +7,9 @@ use bevy::{
 
 pub const LOG_LEVEL: Level = Level::INFO;
 
-pub const DEV_SERVER_TICK_RATE: f32 = /*60;*/ 10.0; //20.0;
+pub const DEV_SERVER_TICK_RATE: f32 = /*30.0;*/ /*20.0;*/ 10.0;
 pub const DEV_SERVER_TICK_DELTA: f32 = 1.0 / DEV_SERVER_TICK_RATE;
-pub const DEV_NETWORK_TICK_RATE: u16 = /*60;*/ 1; //10;
+pub const DEV_NETWORK_TICK_RATE: u16 = /*30;*/ /*20;*/ /*10;*/ 1;
 pub const DEV_NETWORK_TICK_DELTA: f32 = 1.0 / (DEV_NETWORK_TICK_RATE as f32); 
 pub const DEV_NETWORK_TICK_DELTA64: f64 = 1.0 / (DEV_NETWORK_TICK_RATE as f64); 
 

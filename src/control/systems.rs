@@ -243,15 +243,20 @@ E: NetworkMovement {
         if trans_err > config.translation_threshold_sq() {
             trans_pred_err.increment_count();
             if trans_pred_err.get_count() > config.force_replicate_error_count {
+                // frontier is not empty
+                let last_idx = movements.frontier_back()
+                .unwrap()
+                .index();
+
                 warn!(
-                    "sending translation force replication for: {:?}: {}:{}", 
+                    "sending translation force replication for: {:?}: index: {}", 
                     net_e.client_id(),
-                    movements.frontier_front().unwrap().index(),
-                    movements.frontier_back().unwrap().index()
+                    last_idx
                 );
-                trans_force_repl.send(ToClients{ 
+
+                trans_force_repl.send(CorrectTranslation { 
                     mode: SendMode::Direct(net_e.client_id()), 
-                    event: default()
+                    event: ForceReplicateTranslation::new(last_idx)
                 });
 
                 trans_pred_err.reset_count();
@@ -339,15 +344,20 @@ E: NetworkMovement {
         if rot_err > config.rotation_threshold {
             rot_pred_err.increment_count();
             if rot_pred_err.get_count() > config.force_replicate_error_count {
+                // frontier is not empty
+                let last_idx = movements.frontier_back()
+                .unwrap()
+                .index();
+                
                 warn!(
-                    "sending rotation force replication for: {:?}: {}:{}", 
+                    "sending rotation force replication for: {:?}: indec: {}", 
                     net_e.client_id(),
-                    movements.frontier_front().unwrap().index(),
-                    movements.frontier_back().unwrap().index()
+                    last_idx
                 );
+
                 rot_force_repl.send(ToClients{
                     mode: SendMode::Direct(net_e.client_id()),
-                    event: default()
+                    event: ForceReplicateRotation::new(last_idx)
                 });
 
                 rot_pred_err.reset_count();    
@@ -362,7 +372,7 @@ pub(crate) fn handle_correct_translation<T, E>(
     mut query: Query<(
         &mut Transform, 
         &T,
-        &EventSnapshots<E>
+        &mut EventSnapshots<E>
     ), 
         With<Owning>
     >,
@@ -372,19 +382,55 @@ pub(crate) fn handle_correct_translation<T, E>(
 where 
 T: NetworkTranslation,
 E: NetworkMovement {
-    for _ in force_replication.read() {
-        if let Ok((
+    for e in force_replication.read() {
+        let Ok((
             mut transform, 
-            net_translation,
-            movements
-        )) = query.get_single_mut() {
-            transform.translation = net_translation.to_vec3(axis.translation);
-            warn!(
-                "force replicated translation: {}:{}",
-                movements.frontier_front().unwrap().index(),
-                movements.frontier_back().unwrap().index()
-            );
+            net_trans,
+            mut movements
+        )) = query.get_single_mut() else {
+            continue;
+        }; 
+        
+        warn!(
+            "force replicate translation: index: {}",
+            e.last_index
+        );
+
+        let next_idx = e.last_index + 1;
+        
+        if movements.frontier_len() > 0 {
+            // frontier is not empty
+            let frontier_next = movements.frontier_front()
+            .unwrap()
+            .index();
+            warn!("frontier next index: {frontier_next}");
+            if frontier_next  <= next_idx {
+                transform.translation = net_trans.to_vec3(axis.translation);
+                return;
+            }
         }
+        
+        if movements.cache_len() == 0 {
+            transform.translation = net_trans.to_vec3(axis.translation);
+            return;
+        }
+
+        let mut resend = vec![];
+        for m in movements.cache_ref()
+        .iter()
+        .rev() {
+            if m.index() < next_idx {
+                break;
+            }
+
+            resend.push(m.clone());
+        }
+        warn!("{} events were resent", resend.len());
+        for m in resend {
+            movements.insert_unchecked(m);
+        }
+
+        transform.translation = net_trans.to_vec3(axis.translation);    
     }
 }
 
@@ -392,7 +438,7 @@ pub(crate) fn handle_correct_rotation<R, E>(
     mut query: Query<(
         &mut Transform, 
         &R,
-        &EventSnapshots<E>
+        &mut EventSnapshots<E>
     ), 
         With<Owning>
     >,
@@ -402,18 +448,54 @@ pub(crate) fn handle_correct_rotation<R, E>(
 where 
 R: NetworkRotation,
 E: NetworkMovement {
-    for _ in force_replication.read() {
-        if let Ok((
+    for e in force_replication.read() {
+        let Ok((
             mut transform, 
-            net_rotation,
-            movements
-        )) = query.get_single_mut() {
-            transform.rotation = net_rotation.to_quat(axis.rotation);
-            warn!(
-                "force replicated rotation: {}:{}",
-                movements.frontier_front().unwrap().index(),
-                movements.frontier_back().unwrap().index()
-            );
+            net_rot,
+            mut movements
+        )) = query.get_single_mut() else {
+            continue;
+        };
+
+        warn!(
+            "force replicate rotation: index: {}",
+            e.last_index
+        );
+
+        let next_idx = e.last_index + 1;
+        
+        if movements.frontier_len() > 0 {
+            // frontier is not empty
+            let frontier_next = movements.frontier_front()
+            .unwrap()
+            .index();
+            warn!("frontier next index: {frontier_next}");
+            if frontier_next  <= next_idx {
+                transform.rotation = net_rot.to_quat(axis.rotation);
+                return;
+            }
+        } 
+        
+        if movements.cache_len() == 0 {
+            transform.rotation = net_rot.to_quat(axis.rotation);
+            return;
         }
+
+        let mut resend = vec![];
+        for m in movements.cache_ref()
+        .iter()
+        .rev() {
+            if m.index() < next_idx {
+                break;
+            }
+
+            resend.push(m.clone());
+        }
+        warn!("{} events were resent", resend.len());
+        for m in resend {
+            movements.insert_unchecked(m);
+        }
+
+        transform.rotation = net_rot.to_quat(axis.rotation);
     }
 }

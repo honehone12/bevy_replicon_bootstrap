@@ -304,7 +304,7 @@ fn handle_player_spawned(
                 ),
                 Jump::default(),
                 EventSnapshots::<NetworkFire>::with_capacity(NO_CACHE),
-                EventSnapshots::<NetworkMovement2_5D>::with_capacity(NO_CACHE)
+                EventSnapshots::<NetworkMovement2_5D>::with_capacity(SMALL_CACHE_SIZE)
             ));
         } else {
             commands.entity(e)

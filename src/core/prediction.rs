@@ -42,14 +42,42 @@ impl<C: Component + Serialize + DeserializeOwned> PredioctionError<C> {
     }
 }
 
-#[derive(Event, Serialize, Deserialize, Default)]
-pub struct ForceReplicateTranslation<T>(PhantomData<T>)
-where T: NetworkTranslation;
+#[derive(Event, Serialize, Deserialize)]
+pub struct ForceReplicateTranslation<T>
+where T: NetworkTranslation {
+    pub last_index: usize,
+    phantom: PhantomData<T>
+}
+
+impl<T> ForceReplicateTranslation<T>
+where T: NetworkTranslation {
+    #[inline]
+    pub fn new(last_index: usize) -> Self {
+        Self { 
+            last_index,
+            phantom: PhantomData::<T> 
+        }
+    }
+}
 
 pub type CorrectTranslation<T> = ToClients<ForceReplicateTranslation<T>>;
 
-#[derive(Event, Serialize, Deserialize, Default)]
-pub struct ForceReplicateRotation<R>(PhantomData<R>)
-where R: NetworkRotation;
+#[derive(Event, Serialize, Deserialize)]
+pub struct ForceReplicateRotation<R>
+where R: NetworkRotation {
+    pub last_index: usize,
+    phantom: PhantomData<R>
+}
+
+impl<R> ForceReplicateRotation<R>
+where R: NetworkRotation {
+    #[inline]
+    pub fn new(last_index: usize) -> Self {
+        Self { 
+            last_index, 
+            phantom: PhantomData::<R> 
+        }
+    }
+}
 
 pub type CorrectRotation<R> = ToClients<ForceReplicateRotation<R>>;

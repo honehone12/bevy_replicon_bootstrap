@@ -8,6 +8,7 @@ use bevy_replicon::{
     server::server_tick::ServerTick 
 };
 
+#[derive(Clone)]
 pub struct ComponentSnapshot<C: Component + Clone> {
     tick: u32,
     timestamp: f64,

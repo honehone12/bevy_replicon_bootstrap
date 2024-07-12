@@ -9,6 +9,7 @@ use crate::{
     core::{NetworkEntity, NetworkEvent}
 };
 
+#[derive(Clone)]
 pub struct EventSnapshot<E: NetworkEvent> {
     event: E,
     timestamp: f64
@@ -101,6 +102,11 @@ impl<E: NetworkEvent> EventSnapshots<E> {
     #[inline]
     pub fn cache_ref(&self) -> &Vec<EventSnapshot<E>> {
         &self.cache
+    }
+
+    #[inline]
+    pub(crate) fn insert_unchecked(&mut self, snap: EventSnapshot<E>) {
+        self.frontier.push(snap);
     }
 
     pub fn insert(&mut self, event: E)
