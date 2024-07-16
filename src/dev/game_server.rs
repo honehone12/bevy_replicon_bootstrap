@@ -22,8 +22,7 @@ impl Plugin for GameServerPlugin {
         .add_plugins((
             DefaultPlayerEntityEventPlugin,
             DistanceCullingPlugin{
-                culling_threshold: DISTANCE_CULLING_THREASHOLD, 
-                auto_clean: true
+                culling_threshold: DISTANCE_CULLING_THREASHOLD
             },
             RelevantGroupPlugin::<PlayerGroup>::new()
         ))

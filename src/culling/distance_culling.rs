@@ -39,8 +39,7 @@ pub type DistanceMap = EntityPairMap<DistanceAt>;
 
 #[derive(Resource)]
 pub struct CullingConfig {
-    pub culling_threshold: f32,
-    pub clean_up_on_disconnect: bool,
+    pub culling_threshold: f32
 }
 
 impl CullingConfig {
@@ -109,7 +108,7 @@ fn culling_system(
             }
 
             let (addition, multiplier) = match culling {
-                &Culling::Default => (0.0, 0.0),
+                &Culling::Default => (0.0, 1.0),
                 &Culling::Modify { addition, multiplier } => (addition, multiplier),
                 &Culling::Disable => {
                     if !visibility.is_visible(e) {
@@ -158,8 +157,7 @@ fn handle_player_entity_event(
 
 #[derive(Default)]
 pub struct DistanceCullingPlugin {
-    pub culling_threshold: f32,
-    pub auto_clean: bool
+    pub culling_threshold: f32
 }
 
 impl Plugin for DistanceCullingPlugin {
@@ -167,21 +165,17 @@ impl Plugin for DistanceCullingPlugin {
         if app.world.contains_resource::<RepliconServer>() {
             app.insert_resource(DistanceMap::default())
             .insert_resource(CullingConfig{
-                culling_threshold: self.culling_threshold,
-                clean_up_on_disconnect: self.auto_clean
+                culling_threshold: self.culling_threshold
             })
+            .add_systems(PreUpdate, 
+                handle_player_entity_event
+                .after(ServerBootSet::PlayerEntityEvent)
+            )
             .add_systems(PostUpdate, (
                 calculate_distance_system,
                 culling_system
             ).chain(
             ).in_set(ServerBootSet::Culling));
-
-            if self.auto_clean {
-                app.add_systems(PreUpdate, 
-                    handle_player_entity_event
-                    .after(ServerBootSet::PlayerEntityEvent)
-                );
-            }
         } else {
             panic!("could not find replicon server");
         }     
