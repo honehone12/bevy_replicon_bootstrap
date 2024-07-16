@@ -110,7 +110,7 @@ where T: NetworkTranslation {
             Ok(p) => {
                 let interpolated = back_1.interpolate(
                     &back_0, 
-                    p.max(1.0), 
+                    p.min(1.0), 
                     axis.translation
                 );
                 transform.translation = interpolated;
@@ -154,7 +154,7 @@ where R: NetworkRotation {
             Ok(p) => {
                 let interpolated = back_1.interpolate(
                     &back_0, 
-                    p.max(1.0), 
+                    p.min(1.0), 
                     axis.rotation
                 );
                 transform.rotation = interpolated;
