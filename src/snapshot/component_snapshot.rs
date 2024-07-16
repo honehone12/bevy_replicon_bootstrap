@@ -295,13 +295,14 @@ impl<C: Component + Clone> ComponentSnapshots<C> {
     }
 }
 
-pub(super) fn server_populate_component_snapshots<C: Component + Clone>(
+pub(super) fn server_populate_component_snapshots<C>(
     mut query: Query<
         (&C, &mut ComponentSnapshots<C>), 
         Changed<C>
     >,
     server_tick: Res<ServerTick>
-) { 
+)
+where C: Component + Clone { 
     let tick = server_tick.get();
     for (c, mut snaps) in query.iter_mut() {
         match snaps.insert(c.clone(), tick) {
@@ -310,12 +311,12 @@ pub(super) fn server_populate_component_snapshots<C: Component + Clone>(
                 snaps.frontier_len(),
                 snaps.cache_len()
             ),
-            Err(e) => warn!("discarding: {e}") 
+            Err(e) => warn!("discarding component snapshot: {e}") 
         }
     }
 }
 
-pub(super) fn client_populate_component_snapshots<C: Component + Clone>(
+pub(super) fn client_populate_component_snapshots<C>(
     mut query: Query<( 
         &C, 
         &mut ComponentSnapshots<C>,
@@ -323,9 +324,11 @@ pub(super) fn client_populate_component_snapshots<C: Component + Clone>(
     ), 
         Changed<C>
     >,
-) {
+)
+where C: Component + Clone {
     for (c, mut snaps, confirmed_tick) in query.iter_mut() {
         // this as latest replication should be latest tick for this client
+        // because this is changed at this tick
         let tick = confirmed_tick.last_tick().get();
         match snaps.insert(c.clone(), tick) {
             Ok(()) => debug!(
@@ -333,7 +336,7 @@ pub(super) fn client_populate_component_snapshots<C: Component + Clone>(
                 snaps.frontier_len(),
                 snaps.cache_len()
             ),
-            Err(e) => warn!("discarding: {e}")
+            Err(e) => warn!("discarding component snapshot: {e}")
         }
     }
 }

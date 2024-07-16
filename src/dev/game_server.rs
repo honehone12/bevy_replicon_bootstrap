@@ -151,7 +151,7 @@ fn handle_player_entity_event(
     for e in events.read() {
         if let PlayerEntityEvent::Spawned { client_id, entity } = e {
             let tick = server_tick.get();
-            let group = PlayerGroup::random();
+            let group = PlayerGroup::default();//random();
             let player_start = start_lines.next(0)
             .expect("missing player start lines initialization");
             info!("player: {client_id:?} spawned for group: {}", group.group);

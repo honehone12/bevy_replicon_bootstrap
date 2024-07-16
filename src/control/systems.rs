@@ -8,9 +8,11 @@ pub(crate) fn cache_translation_system<T>(
     >
 )
 where T: NetworkTranslation {
-    for mut snaps in query.iter_mut() {
-        snaps.cache();
-    }
+    let Ok(mut snaps) = query.get_single_mut() else {
+        return;
+    };
+
+    snaps.cache();
 }
 
 pub(crate) fn cache_rotation_system<R>(
@@ -20,9 +22,11 @@ pub(crate) fn cache_rotation_system<R>(
     >
 )
 where R: NetworkRotation {
-    for mut snaps in query.iter_mut() {
-        snaps.cache();
-    }
+    let Ok(mut snaps) = query.get_single_mut() else {
+        return;
+    };
+
+    snaps.cache();
 }
 
 pub(crate) fn apply_transform_translation_system<T>(
@@ -102,7 +106,7 @@ where T: NetworkTranslation {
             Some(back) => (back.0.component(), back.1.component()),
             None => {
                 transform.translation = net_trans.to_vec3(axis.translation);
-                return;
+                continue;
             }
         };
 
@@ -146,7 +150,7 @@ where R: NetworkRotation {
             Some(back) => (back.0.component(), back.1.component()),
             None => {
                 transform.rotation = net_rot.to_quat(axis.rotation);
-                return;
+                continue;
             }
         };
 
@@ -160,7 +164,7 @@ where R: NetworkRotation {
                 transform.rotation = interpolated;
             }
             Err(e) => {
-                error!("error on translation interpolation: {e}");
+                error!("error on rotation interpolation: {e}");
                 transform.rotation = net_rot.to_quat(axis.rotation);
             }
         };
@@ -382,16 +386,16 @@ pub(crate) fn handle_correct_translation<T, E>(
 where 
 T: NetworkTranslation,
 E: NetworkMovement {
+    let Ok((
+        mut transform, 
+        net_trans,
+        mut movements
+    )) = query.get_single_mut() else {
+        return;
+    };
+    
     for e in force_replication.read() {
-        let Ok((
-            mut transform, 
-            net_trans,
-            mut movements
-        )) = query.get_single_mut() else {
-            continue;
-        }; 
-        
-        warn!(
+         warn!(
             "force replicate translation: index: {}",
             e.last_index
         );
@@ -448,15 +452,15 @@ pub(crate) fn handle_correct_rotation<R, E>(
 where 
 R: NetworkRotation,
 E: NetworkMovement {
-    for e in force_replication.read() {
-        let Ok((
-            mut transform, 
-            net_rot,
-            mut movements
-        )) = query.get_single_mut() else {
-            continue;
-        };
+    let Ok((
+        mut transform, 
+        net_rot,
+        mut movements
+    )) = query.get_single_mut() else {
+        return;
+    };
 
+    for e in force_replication.read() {
         warn!(
             "force replicate rotation: index: {}",
             e.last_index

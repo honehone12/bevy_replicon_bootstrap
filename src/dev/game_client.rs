@@ -177,8 +177,8 @@ fn handle_ball_spawned(
 ) {
     for (
         e, ball,
-        net_rb_trans, net_rb_rot, 
-        net_rb_linvel, net_rb_angvel,
+        net_trans, net_rot, 
+        net_linvel, net_angvel,
         confirmed_tick
     ) in query.iter() {
         let material = match ball {
@@ -191,8 +191,8 @@ fn handle_ball_spawned(
             mesh: meshes.add(Mesh::from(Sphere::new(BALL_RADIUS))),
             material,
             transform: Transform{
-                translation: net_rb_trans.0,
-                rotation: net_rb_rot.to_quat(axis.rotation),
+                translation: net_trans.to_vec3(axis.translation),
+                rotation: net_rot.to_quat(axis.rotation),
                 ..default()
             },
             ..default()
@@ -207,12 +207,12 @@ fn handle_ball_spawned(
                 .insert((
                     RigidBody::KinematicPositionBased,
                     ComponentSnapshots::<NetworkTranslation3D>::with_init(
-                        *net_rb_trans,
+                        *net_trans,
                         tick, 
                         SMALL_CACHE_SIZE
                     ).expect("sytem time looks earlier than unix epoch"),
                     ComponentSnapshots::<NetworkEuler>::with_init(
-                        *net_rb_rot, 
+                        *net_rot, 
                         tick, 
                         SMALL_CACHE_SIZE
                     ).expect("sytem time looks earlier than unix epoch"),
@@ -223,8 +223,8 @@ fn handle_ball_spawned(
                 .insert((
                     DynamicRigidBodyBundle::new(
                         BALL_MASS,
-                        net_rb_linvel.unwrap_or(&default()).0, 
-                        net_rb_angvel.unwrap_or(&default()).0
+                        net_linvel.unwrap_or(&default()).0, 
+                        net_angvel.unwrap_or(&default()).0
                     ),
                 ))
             }
@@ -252,12 +252,13 @@ fn handle_player_spawned(
         Added<NetworkEntity>
     >,
     mut entity_player_map: ResMut<EntityPlayerMap>,
+    axis: Res<TransformAxis>,
     client: Res<Client>
 ) {
     for (
         e, net_e, 
         presentation, 
-        net_cc, net_rot, 
+        net_trans, net_rot, 
         confirmed_tick
     ) in query.iter() {
         let tick = confirmed_tick.last_tick()
@@ -272,14 +273,14 @@ fn handle_player_spawned(
                 ))),
                 material: materials.add(presentation.color),
                 transform: Transform{
-                    translation: net_cc.to_vec3(TranslationAxis::XZ),
-                    rotation: net_rot.to_quat(RotationAxis::Y),
-                    scale: Vec3::ONE
+                    translation: net_trans.to_vec3(axis.translation),
+                    rotation: net_rot.to_quat(axis.rotation),
+                    ..default()
                 },
                 ..default()
             },
             ComponentSnapshots::with_init(
-                *net_cc, 
+                *net_trans, 
                 tick, 
                 SMALL_CACHE_SIZE
             ).expect("sytem time looks earlier than unix epoch"),

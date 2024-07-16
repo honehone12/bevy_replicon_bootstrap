@@ -209,7 +209,7 @@ pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
 ) {
     for FromClient { client_id, event } in events.read() {
         if let Err(e) = event.validate() {
-            warn!("discarding: {e}");
+            warn!("validation fail: {e}");
             continue;
         }
 
@@ -225,7 +225,7 @@ pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
                     snaps.frontier_len(), 
                     snaps.cache_len()
                 ),
-                Err(e) => warn!("discarding: {e}")
+                Err(e) => warn!("discarding event snapshot: {e}")
             }
         }
     }
@@ -237,7 +237,7 @@ pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
 ) {
     for event in events.read() {
         if let Err(e) = event.validate() {
-            warn!("discarding: {e}");
+            warn!("validation fail: {e}");
             continue;
         }
 
@@ -249,7 +249,7 @@ pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
                     snaps.frontier_len(), 
                     snaps.cache_len()
                 ),
-                Err(e) => warn!("discarding: {e}")
+                Err(e) => warn!("discarding event snapshot: {e}")
             }
         }
     }
