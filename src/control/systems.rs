@@ -396,7 +396,7 @@ E: NetworkMovement {
             e.last_index
         );
 
-        let next_idx = e.last_index + 1;
+        let next_idx = e.last_index() + 1;
         
         if movements.frontier_len() > 0 {
             // frontier is not empty
@@ -462,7 +462,7 @@ E: NetworkMovement {
             e.last_index
         );
 
-        let next_idx = e.last_index + 1;
+        let next_idx = e.last_index() + 1;
         
         if movements.frontier_len() > 0 {
             // frontier is not empty

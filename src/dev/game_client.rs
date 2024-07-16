@@ -139,11 +139,11 @@ fn handle_action(
 
                 movements.send(NetworkMovement2_5D{
                     current_translation,
-                    current_yaw,
+                    current_angle: current_yaw,
                     linear_axis: a.movement_vec,
                     rotation_axis: a.rotation_vec,
                     bits,
-                    index: event_id.id,
+                    index: event_id.id as u64,
                     tick
                 });
             }

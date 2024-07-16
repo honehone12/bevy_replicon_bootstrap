@@ -45,18 +45,23 @@ impl<C: Component + Serialize + DeserializeOwned> PredioctionError<C> {
 #[derive(Event, Serialize, Deserialize)]
 pub struct ForceReplicateTranslation<T>
 where T: NetworkTranslation {
-    pub last_index: usize,
+    pub last_index: u64,
     phantom: PhantomData<T>
 }
 
 impl<T> ForceReplicateTranslation<T>
 where T: NetworkTranslation {
     #[inline]
-    pub fn new(last_index: usize) -> Self {
+    pub fn new(index: usize) -> Self {
         Self { 
-            last_index,
+            last_index: index as u64,
             phantom: PhantomData::<T> 
         }
+    }
+
+    #[inline]
+    pub fn last_index(&self) -> usize {
+        self.last_index as usize
     }
 }
 
@@ -65,18 +70,23 @@ pub type CorrectTranslation<T> = ToClients<ForceReplicateTranslation<T>>;
 #[derive(Event, Serialize, Deserialize)]
 pub struct ForceReplicateRotation<R>
 where R: NetworkRotation {
-    pub last_index: usize,
+    pub last_index: u64,
     phantom: PhantomData<R>
 }
 
 impl<R> ForceReplicateRotation<R>
 where R: NetworkRotation {
     #[inline]
-    pub fn new(last_index: usize) -> Self {
+    pub fn new(index: usize) -> Self {
         Self { 
-            last_index, 
+            last_index: index as u64, 
             phantom: PhantomData::<R> 
         }
+    }
+
+    #[inline]
+    pub fn last_index(&self) -> usize {
+        self.last_index as usize
     }
 }
 
