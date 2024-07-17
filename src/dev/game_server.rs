@@ -34,8 +34,7 @@ impl Plugin for GameServerPlugin {
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
-            handle_player_entity_event,
-            handle_fire
+            handle_player_entity_event
         ).chain());
     }
 }
@@ -184,76 +183,13 @@ fn handle_player_entity_event(
                     LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
                 EventSnapshots::<NetworkMovement2_5D>::with_capacity(
-                    LARGE_CACHE_SIZE
-                ),
-                EventSnapshots::<NetworkFire>::with_capacity(
                     MEDIUM_CACHE_SIZE
+                ),
+                EventSnapshots::<NetworkHit>::with_capacity(
+                    SMALL_CACHE_SIZE
                 )
             ));
         }
     }
 }
 
-fn handle_fire(
-    mut shooters: Query<(
-        &NetworkEntity, 
-        &mut EventSnapshots<NetworkFire>
-    )>,
-    query: Query<(
-        &NetworkEntity, 
-        &ComponentSnapshots<NetworkTranslation3D>
-    )>,
-) {
-    // *******************************
-    // this code should be improved
-    // *******************************
-    
-    for (shooter, mut fire_snaps) in shooters.iter_mut() {
-        for fire in fire_snaps.frontier_ref() {
-            info!(
-                "player: {:?} fired at tick {}",
-                shooter.client_id(), 
-                fire.sent_tick()
-            );
-    
-            for (net_e, snaps) in query.iter() {
-                let is_shooter = net_e.client_id() == shooter.client_id();
-    
-                let cache = snaps.cache_ref();
-                let index = match cache.iter()
-                .rposition(|s| 
-                    s.tick() <= fire.sent_tick()
-                ) {
-                    Some(idx) => idx,
-                    None => {
-                        if cfg!(debug_assertions) {
-                            panic!(
-                                "could not find tick smaller than {}",
-                                fire.sent_tick()
-                            );
-                        } else {
-                            warn!(
-                                "could not find tick smaller than {}, skipping",
-                                fire.sent_tick()
-                            );
-                            continue;
-                        }
-                    }
-                };
-    
-                // get by found index
-                let snap = cache.get(index).unwrap();
-                info!(
-                    "found latest snap: shooter: {}, index: {}, total: {}, timestamp: {}, translation: {}",
-                    is_shooter, 
-                    index,
-                    cache.len(), 
-                    snap.timestamp(), 
-                    snap.component().0
-                );
-            }
-        }
-
-        fire_snaps.cache();
-    }
-}

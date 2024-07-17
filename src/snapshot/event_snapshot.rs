@@ -204,8 +204,8 @@ impl<E: NetworkEvent> EventSnapshots<E> {
 }
 
 pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
-    mut events: EventReader<FromClient<E>>,
-    mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>
+    mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>,
+    mut events: EventReader<FromClient<E>>
 ) {
     for FromClient { client_id, event } in events.read() {
         if let Err(e) = event.validate() {

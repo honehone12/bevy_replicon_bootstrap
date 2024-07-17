@@ -141,6 +141,7 @@ where R: NetworkRotation {
 #[derive(Bundle)]
 pub struct CharacterControllerBundle {
     pub character_controller: KinematicCharacterController,
+    pub rigidbody: RigidBody,
     pub capsule: Collider
 }
 
@@ -169,6 +170,7 @@ impl CharacterControllerBundle {
                 snap_to_ground: None,
                 ..default()
             },
+            rigidbody: RigidBody::KinematicPositionBased,
             capsule: Collider::capsule_y(half_hight, radius)
         }
     }

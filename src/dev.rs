@@ -58,8 +58,7 @@ impl Plugin for GameCommonPlugin {
             NetworkLinearVelocityPlugin::<NetworkLinearVelocity3D>::new(),
             NetworkAngularVelocityPlugin::<NetworkAngularVelocity3D>::new(),
 
-            ClientEventPlugin::<NetworkMovement2_5D>::new(ChannelKind::Unreliable),
-            ClientEventPlugin::<NetworkFire>::new(ChannelKind::Ordered),
+            ClientEventPlugin::<NetworkMovement2_5D>::new(ChannelKind::Unreliable)
         ))
         .replicate::<PlayerPresentation>()
         .replicate::<Ball>()
@@ -127,15 +126,15 @@ pub struct PlayerMovementParams {
 }
 
 #[derive(Event, Serialize, Deserialize, Clone)]
-pub struct NetworkFire {
-    pub index: usize,
+pub struct NetworkHit {
+    pub index: u64,
     pub tick: u32
 }
 
-impl NetworkEvent for NetworkFire {
+impl NetworkEvent for NetworkHit {
     #[inline]
     fn index(&self) -> usize {
-        self.index
+        self.index as usize
     }
 
     #[inline]

@@ -21,6 +21,11 @@ impl Client {
     pub fn id(&self) -> u64 {
         self.0
     }
+
+    #[inline]
+    pub fn this_client(&self, client_id: &ClientId) -> bool {
+        self.0 == client_id.get()
+    }
 }
 
 pub struct ClientBuilder {

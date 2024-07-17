@@ -48,7 +48,7 @@ impl Plugin for GameClientPlugin {
             handle_ball_spawned,
             handle_input, 
             handle_action,
-            draw_network_translation_gizmos_system
+            draw_gizmos_system
         ).chain());
     }
 }
@@ -115,47 +115,74 @@ fn handle_input(
 } 
 
 fn handle_action(
-    query: Query<&Transform, With<Owning>>,
+    query: Query<
+        (Entity, &Transform), 
+        With<Owning>
+    >,
     mut actions: EventReader<Action>,
     mut movements: EventWriter<NetworkMovement2_5D>,
-    mut fires: EventWriter<NetworkFire>,
-    latest_confirmed: Res<LatestConfirmedTick>
+    latest_confirmed: Res<LatestConfirmedTick>,
+    rapier: Res<RapierContext>
 ) {
-    if let Ok(transform) = query.get_single() {
-        let tick = latest_confirmed.get()
-        .get();
+    let Ok((e, transform)) = query.get_single() else {
+        return;
+    };
 
-        for (a, event_id) in actions.read_with_id() {
-            if a.has_movement() {
-                let mut bits = 0;
-                if a.has_jump {
-                    bits |= 0x01;
-                }
+    let tick = latest_confirmed.get()
+    .get();
 
-                let current_translation = transform.translation;
-                let current_yaw = transform.rotation.to_euler(EulerRot::YXZ)
-                .0
-                .to_degrees();  
-
-                movements.send(NetworkMovement2_5D{
-                    current_translation,
-                    current_angle: current_yaw,
-                    linear_axis: a.movement_vec,
-                    rotation_axis: a.rotation_vec,
-                    bits,
-                    index: event_id.id as u64,
-                    tick
-                });
+    for (a, event_id) in actions.read_with_id() {
+        if a.has_movement() {
+            let mut bits = 0;
+            if a.has_jump {
+                bits |= 0x01;
             }
 
-            if a.has_fire {
-                fires.send(NetworkFire{
-                    index: event_id.id,
-                    tick
-                });
-            }
+            let current_translation = transform.translation;
+            let current_yaw = transform.rotation.to_euler(EulerRot::YXZ)
+            .0
+            .to_degrees();  
+
+            movements.send(NetworkMovement2_5D{
+                current_translation,
+                current_angle: current_yaw,
+                linear_axis: a.movement_vec,
+                rotation_axis: a.rotation_vec,
+                bits,
+                index: event_id.id as u64,
+                tick
+            });
+        }
+
+        if a.has_fire {
+            observe_fire(e, transform, &rapier);
         }
     }
+}
+
+fn observe_fire(
+    entity: Entity,
+    transform: &Transform,
+    rapier: &RapierContext
+) {
+    let Some((e, intersection)) = rapier.cast_ray_and_get_normal(
+        transform.translation, 
+        transform.forward()
+        .into(),
+        FIRE_RANGE, 
+        false, 
+        QueryFilter::exclude_fixed()
+        .exclude_sensors()
+        .exclude_rigid_body(entity)
+    ) else {
+        return;
+    };
+
+    info!(
+        "detected hit !! entity: {e:?} point: {} toi: {}", 
+        intersection.point,
+        intersection.time_of_impact
+    );
 }
 
 fn handle_ball_spawned(
@@ -293,7 +320,7 @@ fn handle_player_spawned(
         .id();
 
         let client_id = net_e.client_id();
-        if client_id.get() == client.id() {
+        if client.this_client(&client_id) {
             commands.entity(e)
             .insert((
                 Owning,
@@ -304,8 +331,7 @@ fn handle_player_spawned(
                     CHARACTER_MASS
                 ),
                 Jump::default(),
-                EventSnapshots::<NetworkFire>::with_capacity(NO_CACHE),
-                EventSnapshots::<NetworkMovement2_5D>::with_capacity(SMALL_CACHE_SIZE)
+                EventSnapshots::<NetworkMovement2_5D>::with_capacity(MEDIUM_CACHE_SIZE)
             ));
         } else {
             commands.entity(e)
@@ -322,10 +348,19 @@ fn handle_player_spawned(
     } 
 }
 
-fn draw_network_translation_gizmos_system(
+fn draw_gizmos_system(
+    owning: Query<&Transform, With<Owning>>,
     query: Query<&NetworkTranslation3D>,
     mut gizmos: Gizmos
 ) {
+    if let Ok(transform) = owning.get_single() {
+        gizmos.ray(
+            transform.translation, 
+            transform.forward() * FIRE_RANGE, 
+            Color::CYAN
+        );
+    }
+
     const  RADIUS: f32 = 1.0;
 
     for net_trans in query.iter() {

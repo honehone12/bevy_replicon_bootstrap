@@ -99,3 +99,5 @@ pub const BALL_POSITION_3: Vec3 = Vec3::new(0.0, 1.0, 5.0);
 pub const BALL_POSITION_4: Vec3 = Vec3::new(0.0, 1.0, -5.0);
 pub const BALL_COLOR_1: Color = Color::BLUE;
 pub const BALL_COLOR_2: Color = Color::RED;
+
+pub const FIRE_RANGE:f32 = 15.0;
