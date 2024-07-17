@@ -100,7 +100,7 @@ pub(crate) fn player_entity_event_system(
     mut commands: Commands,
     mut server_evetns: EventReader<ServerEvent>,
     mut player_entity_events: EventWriter<PlayerEntityEvent>, 
-    mut player_entities_map: ResMut<PlayerEntitiesMap>,
+    mut player_entity_map: ResMut<PlayerEntityMap>,
     mut entity_player_map: ResMut<EntityPlayerMap>,
     mut connected_clients: ResMut<ConnectedClients>
 ) {
@@ -112,15 +112,19 @@ pub(crate) fn player_entity_event_system(
                     Replicated,
                 ))
                 .id();
-                player_entities_map.insert(client_id, entity);
+                if let Err(e) = player_entity_map.try_insert(client_id, entity) {
+                    // fatal
+                    panic!("same client id is already connected, {e}");
+                }
+
                 if let Err(e) = entity_player_map.try_insert(entity, client_id) {
-                    // fatal, can not check hits
+                    // fatal
                     panic!("same entity is already mapped, {e}");
                 }
                 
                 let visibility = match connected_clients.get_client_mut(client_id) {
                     Some(c) => c.visibility_mut(),
-                    // fatal, client can not see it's entity
+                    // fatal
                     None => panic!("could not find client vivibility, wrong scheduling?")
                 };
                 visibility.set_visibility(entity, true);
@@ -131,18 +135,17 @@ pub(crate) fn player_entity_event_system(
                 });
             }
             &ServerEvent::ClientDisconnected { client_id, reason: _ } => {
-                if let Some(v) = player_entities_map.get(&client_id) {
-                    for &entity in v.iter() {
-                        commands.entity(entity)
-                        .despawn();
-                        player_entity_events.send(PlayerEntityEvent::Despawned{
-                            client_id,
-                            entity
-                        });
-                        entity_player_map.remove(&entity);
-                    }
+                if let Some(e) = player_entity_map.get(&client_id) {
+                    commands.entity(*e)
+                    .despawn();
+                    
+                    player_entity_events.send(PlayerEntityEvent::Despawned{
+                        client_id,
+                        entity: *e
+                    });
 
-                    player_entities_map.clear(&client_id);
+                    entity_player_map.remove(e);
+                    player_entity_map.remove(&client_id);
                 }
             }
         }

@@ -36,6 +36,7 @@ impl Plugin for GameClientPlugin {
         })
         .insert_resource(EntityPlayerMap::default())
         .add_event::<Action>()
+        .add_event::<Fire>()
         .add_systems(Startup, (
             setup_light,
             setup_fixed_camera,
@@ -48,6 +49,7 @@ impl Plugin for GameClientPlugin {
             handle_ball_spawned,
             handle_input, 
             handle_action,
+            observe_fire,
             draw_gizmos_system
         ).chain());
     }
@@ -74,6 +76,9 @@ impl Action {
         self.has_movement() || self.has_fire 
     }
 }
+
+#[derive(Event)]
+pub struct Fire;
 
 fn handle_input(
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -115,16 +120,13 @@ fn handle_input(
 } 
 
 fn handle_action(
-    query: Query<
-        (Entity, &Transform), 
-        With<Owning>
-    >,
+    query: Query<&Transform, With<Owning>>,
     mut actions: EventReader<Action>,
     mut movements: EventWriter<NetworkMovement2_5D>,
     latest_confirmed: Res<LatestConfirmedTick>,
-    rapier: Res<RapierContext>
+    mut fires: EventWriter<Fire>
 ) {
-    let Ok((e, transform)) = query.get_single() else {
+    let Ok(transform) = query.get_single() else {
         return;
     };
 
@@ -155,34 +157,62 @@ fn handle_action(
         }
 
         if a.has_fire {
-            observe_fire(e, transform, &rapier);
+            fires.send(Fire);
         }
     }
 }
 
 fn observe_fire(
-    entity: Entity,
-    transform: &Transform,
-    rapier: &RapierContext
+    query: Query<(Entity, &Transform), With<Owning>>,
+    rapier: Res<RapierContext>,
+    entity_player_map: Res<EntityPlayerMap>,
+    latest_confirmed: Res<LatestConfirmedTick>,
+    mut fires: EventReader<Fire>,
+    mut hits: EventWriter<NetworkHit>
 ) {
-    let Some((e, intersection)) = rapier.cast_ray_and_get_normal(
-        transform.translation, 
-        transform.forward()
-        .into(),
-        FIRE_RANGE, 
-        false, 
-        QueryFilter::exclude_fixed()
-        .exclude_sensors()
-        .exclude_rigid_body(entity)
-    ) else {
-        return;
-    };
+    for (_, id) in fires.read_with_id() {
+        let Ok((shooter_e, transform)) = query.get_single() else {
+            return;
+        };
+    
+        let Some((e, intersection)) = rapier.cast_ray_and_get_normal(
+            transform.translation, 
+            transform.forward()
+            .into(),
+            FIRE_RANGE, 
+            false, 
+            QueryFilter::exclude_fixed()
+            .exclude_sensors()
+            .exclude_rigid_body(shooter_e)
+        ) else {
+            return;
+        };
+    
+        let client_id = match entity_player_map.get(&e) {
+            Some(id) => id.get(),
+            None => return
+        };
+    
+        let tick = latest_confirmed
+        .get()
+        .get();
+    
+        info!(
+            "detected hit !! client: {} point: {} toi: {} at tick: {}", 
+            client_id,
+            intersection.point,
+            intersection.time_of_impact,
+            tick
+        );
 
-    info!(
-        "detected hit !! entity: {e:?} point: {} toi: {}", 
-        intersection.point,
-        intersection.time_of_impact
-    );
+        hits.send(NetworkHit{
+            point: intersection.point,
+            toi: intersection.time_of_impact,
+            client_id,
+            index: id.id as u64,
+            tick
+        });
+    }
 }
 
 fn handle_ball_spawned(

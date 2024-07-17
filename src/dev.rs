@@ -3,6 +3,7 @@ pub mod level;
 pub mod game_client;
 pub mod game_server;
 
+use anyhow::bail;
 use rand::prelude::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
@@ -57,7 +58,8 @@ impl Plugin for GameCommonPlugin {
 
             NetworkLinearVelocityPlugin::<NetworkLinearVelocity3D>::new(),
             NetworkAngularVelocityPlugin::<NetworkAngularVelocity3D>::new(),
-
+            
+            ClientEventPlugin::<NetworkHit>::new(ChannelKind::Ordered),
             ClientEventPlugin::<NetworkMovement2_5D>::new(ChannelKind::Unreliable)
         ))
         .replicate::<PlayerPresentation>()
@@ -127,6 +129,10 @@ pub struct PlayerMovementParams {
 
 #[derive(Event, Serialize, Deserialize, Clone)]
 pub struct NetworkHit {
+    pub point: Vec3,
+    pub toi: f32,
+    pub client_id: u64,
+    
     pub index: u64,
     pub tick: u32
 }
@@ -144,6 +150,13 @@ impl NetworkEvent for NetworkHit {
 
     #[inline]
     fn validate(&self) -> anyhow::Result<()> {
+        if !self.point.is_finite() {
+            bail!("failed to validate point");
+        }
+        if !self.toi.is_finite() || self.toi < 0.0 {
+            bail!("failed to validate toi");
+        }
+
         Ok(())
     }
 }
