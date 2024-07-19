@@ -342,7 +342,7 @@ fn handle_hit(
 
                 debug!("translation: {t} is verified hit");
                 verified_hits.push((
-                    hit_snap.received_timestamp(),
+                    (hit_snap.received_timestamp() * 1000.0) as u64,
                     (shooter_net_e.client_id(), hit_client_id)
                 ));
                 break;
@@ -353,7 +353,7 @@ fn handle_hit(
     }    
 
     if verified_hits.len() > 0 {
-        verified_hits.sort_unstable_by_key(|h| (h.0 * 1000.0) as u64);
+        verified_hits.sort_unstable_by_key(|h| h.0);
     }
     
     for verified in verified_hits.iter() {
