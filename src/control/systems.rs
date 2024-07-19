@@ -208,35 +208,24 @@ E: NetworkMovement {
         let frontier_snap = movements.frontier_front()
         .unwrap();
         let frontier_tick = frontier_snap.sent_tick();
-        let frontier = frontier_snap.event();
 
-        let trans_cache = trans_snaps.cache_ref();
-        let trans_idx = match trans_cache.iter()
-        .rposition(|s| 
-            s.tick() <= frontier_tick
-        ) {
-            Some(idx) => idx,
+        let found_snap = match trans_snaps.find_at_tick(frontier_tick) {
+            Some(s) => s,
             None => {
                 if cfg!(debug_assertions) {
-                    panic!(
-                        "could not find snapshot for tick: {frontier_tick}"
-                    );
+                    panic!("could not find snapshot for tick: {frontier_tick}");
                 } else {
-                    error!(
-                        "could not find snapshot for tick: {frontier_tick}, skipping"
-                    );
+                    error!("could not find snapshot for tick, skipping");
                     // should we sent force replication here ??
                     continue;
                 }
             }
         };
 
-        // get by found index
-        let found_snap = trans_cache.get(trans_idx)
-        .unwrap();
         let server_translation = found_snap.component()
         .to_vec3(axis.translation);
-        let client_translation = frontier.current_translation(axis.translation);
+        let client_translation = frontier_snap.event()
+        .current_translation(axis.translation);
         debug!(
             "found snap at: {} for event's tick: {}",
             found_snap.tick(),
@@ -303,35 +292,24 @@ E: NetworkMovement {
         let frontier_snap = movements.frontier_front()
         .unwrap();
         let frontier_tick = frontier_snap.sent_tick();
-        let frontier = frontier_snap.event();
 
-        let rot_cache = rot_snaps.cache_ref();
-        let rot_idx = match rot_cache.iter()
-        .rposition(|s| 
-            s.tick() <= frontier_tick
-        ) {
-            Some(idx) => idx,
+        let found_snap = match rot_snaps.find_at_tick(frontier_tick) {
+            Some(s) => s,
             None => {
                 if cfg!(debug_assertions) {
-                    panic!(
-                        "could not find snapshot for tick: {frontier_tick}"
-                    );
+                    panic!("could not find snapshot for tick: {frontier_tick}");
                 } else {
-                    error!(
-                        "could not find snapshot for tick: {frontier_tick}, skipping"
-                    );
+                    error!("could not find snapshot for tick, skipping");
                     // should we sent force replication here ??
                     continue;
                 }
             }
         };
 
-        // get by found index
-        let found_snap = rot_cache.get(rot_idx)
-        .unwrap();
         let server_rotation = found_snap.component()
         .to_quat(axis.rotation);
-        let client_rotation = frontier.current_rotation(axis.rotation);
+        let client_rotation = frontier_snap.event()
+        .current_rotation(axis.rotation);
         if client_rotation.length_squared() == 0.0 {
             warn!("client rotation length is zero, skipping update");
             continue;
@@ -394,8 +372,10 @@ E: NetworkMovement {
         return;
     };
     
+    let mut sort = false;
+
     for e in force_replication.read() {
-         warn!(
+        warn!(
             "force replicate translation: index: {}",
             e.last_index
         );
@@ -407,16 +387,16 @@ E: NetworkMovement {
             let frontier_next = movements.frontier_front()
             .unwrap()
             .index();
-            warn!("frontier next index: {frontier_next}");
+            debug!("frontier next index: {frontier_next}");
             if frontier_next  <= next_idx {
                 transform.translation = net_trans.to_vec3(axis.translation);
-                return;
+                continue;
             }
         }
         
         if movements.cache_len() == 0 {
             transform.translation = net_trans.to_vec3(axis.translation);
-            return;
+            continue;
         }
 
         let mut resend = vec![];
@@ -429,12 +409,21 @@ E: NetworkMovement {
 
             resend.push(m.clone());
         }
-        warn!("{} events were resent", resend.len());
+
+        if resend.len() > 0 {
+            sort = true;
+            debug!("{} events were resent", resend.len());
+        }
+
         for m in resend {
             movements.insert_unchecked(m);
         }
 
         transform.translation = net_trans.to_vec3(axis.translation);    
+    }
+
+    if sort {
+        movements.sort_frontier_by_index();
     }
 }
 
@@ -460,6 +449,8 @@ E: NetworkMovement {
         return;
     };
 
+    let mut sort = false;
+
     for e in force_replication.read() {
         warn!(
             "force replicate rotation: index: {}",
@@ -473,16 +464,16 @@ E: NetworkMovement {
             let frontier_next = movements.frontier_front()
             .unwrap()
             .index();
-            warn!("frontier next index: {frontier_next}");
+            debug!("frontier next index: {frontier_next}");
             if frontier_next  <= next_idx {
                 transform.rotation = net_rot.to_quat(axis.rotation);
-                return;
+                continue;
             }
         } 
         
         if movements.cache_len() == 0 {
             transform.rotation = net_rot.to_quat(axis.rotation);
-            return;
+            continue;
         }
 
         let mut resend = vec![];
@@ -495,11 +486,20 @@ E: NetworkMovement {
 
             resend.push(m.clone());
         }
-        warn!("{} events were resent", resend.len());
+
+        if resend.len() > 0 {
+            sort = true;
+            debug!("{} events were resent", resend.len());
+        }
+
         for m in resend {
             movements.insert_unchecked(m);
         }
-
+        
         transform.rotation = net_rot.to_quat(axis.rotation);
+    }
+
+    if sort {
+        movements.sort_frontier_by_index();
     }
 }

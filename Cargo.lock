@@ -889,6 +889,7 @@ dependencies = [
  "bevy_replicon",
  "bevy_replicon_renet",
  "rand",
+ "rapier3d",
  "serde",
 ]
 

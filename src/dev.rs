@@ -130,7 +130,6 @@ pub struct PlayerMovementParams {
 #[derive(Event, Serialize, Deserialize, Clone)]
 pub struct NetworkHit {
     pub point: Vec3,
-    pub toi: f32,
     pub client_id: u64,
     
     pub index: u64,
@@ -152,9 +151,6 @@ impl NetworkEvent for NetworkHit {
     fn validate(&self) -> anyhow::Result<()> {
         if !self.point.is_finite() {
             bail!("failed to validate point");
-        }
-        if !self.toi.is_finite() || self.toi < 0.0 {
-            bail!("failed to validate toi");
         }
 
         Ok(())
@@ -223,7 +219,7 @@ pub fn update_character_controller_system(
             if movement.rotation_axis != Vec2::ZERO {
                 let mut angle_delta = movement.rotation_axis.x;
                 angle_delta *= params.base_angular_speed * delta_time;
-                debug!("angle delta: {angle_delta}");
+                trace!("angle delta: {angle_delta}");
 
                 transform.rotate_y(-angle_delta.to_radians());
             }
@@ -234,10 +230,10 @@ pub fn update_character_controller_system(
                     0.0, 
                     -movement.linear_axis.y
                 ).normalize();
+                let dir = transform.rotation * axis;
                 
-                let dir = (transform.rotation * axis).normalize();
                 let translation_delta = dir * params.base_speed * delta_time;
-                debug!("translation delta: {translation_delta}");
+                trace!("translation delta: {translation_delta}");
         
                 match cc.translation {
                     Some(ref mut v) => *v += translation_delta,

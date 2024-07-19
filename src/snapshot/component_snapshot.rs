@@ -139,6 +139,11 @@ impl<C: Component + Clone> ComponentSnapshots<C> {
     }
 
     #[inline]
+    pub fn find_at_tick(&self, tick: u32) -> Option<&ComponentSnapshot<C>> {
+        self.cache.iter().rfind(|s| s.tick <= tick)
+    }
+
+    #[inline]
     pub fn frontier_front(&self) -> Option<&ComponentSnapshot<C>> {
         self.frontier.get(0)
     }
@@ -306,7 +311,7 @@ where C: Component + Clone {
     let tick = server_tick.get();
     for (c, mut snaps) in query.iter_mut() {
         match snaps.insert(c.clone(), tick) {
-            Ok(()) => debug!(
+            Ok(()) => trace!(
                 "inserted component snapshot: frontier len: {}, cache len: {}",
                 snaps.frontier_len(),
                 snaps.cache_len()
@@ -331,7 +336,7 @@ where C: Component + Clone {
         // because this is changed at this tick
         let tick = confirmed_tick.last_tick().get();
         match snaps.insert(c.clone(), tick) {
-            Ok(()) => debug!(
+            Ok(()) => trace!(
                 "inserted component snapshot frontier len: {}, cache len: {}",
                 snaps.frontier_len(),
                 snaps.cache_len()

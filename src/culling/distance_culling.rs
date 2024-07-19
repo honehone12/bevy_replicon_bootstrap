@@ -123,20 +123,15 @@ fn culling_system(
                 None => 0.0
             };
 
-            debug!(
-                "checking {player_e:?}:{e:?} distance: {} addition: {} multiplier: {}", 
-                distance,
-                addition,
-                multiplier
-            );
-
             let result = addition + distance * multiplier;
             if result >= config.threshold_sq() {
                 if visibility.is_visible(e) {
+                    debug!("{e:?} is not visible from {client_id:?}");
                     visibility.set_visibility(e, false);
                 }
             } else {
                 if !visibility.is_visible(e) {
+                    debug!("{e:?} is visible from {client_id:?}");
                     visibility.set_visibility(e, true);
                 }
             }

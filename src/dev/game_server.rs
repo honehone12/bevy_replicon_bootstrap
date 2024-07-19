@@ -2,7 +2,9 @@ use bevy::utils::Uuid;
 use bevy_replicon::server::server_tick::ServerTick;
 use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::{ClientId as RenetClientId, RenetServer};
+use rapier3d::geometry::{Capsule, Ray, RayCast};
 use level::*;
+use rapier3d::math::Isometry;
 use super::*;
 
 pub struct GameServerPlugin;
@@ -34,8 +36,14 @@ impl Plugin for GameServerPlugin {
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
-            handle_player_entity_event
-        ).chain());
+            handle_player_entity_event,
+            handle_hit
+        ).chain())
+        .add_systems(PostUpdate, 
+            handle_hit
+            .after(ServerBootSet::Cache)
+            .before(ServerSet::Send)
+        );
     }
 }
 
@@ -118,7 +126,7 @@ fn handle_server_event(
                     None => {
                         warn!("no user data for client: {:?}", client_id);
                         renet_server.disconnect(renet_client_id);
-                        return;
+                        continue;
                     }
                 };
 
@@ -127,7 +135,7 @@ fn handle_server_event(
                     Err(e) => {
                         warn!("malformatted uuid for client: {:?}: {e}", client_id);
                         renet_server.disconnect(renet_client_id);
-                        return;
+                        continue;
                     }
                 };
 
@@ -193,3 +201,166 @@ fn handle_player_entity_event(
     }
 }
 
+fn handle_hit(
+    mut shooter: Query<(
+        &NetworkEntity,
+        &mut EventSnapshots<NetworkHit>,
+        &ComponentSnapshots<NetworkTranslation3D>,
+        &ComponentSnapshots<NetworkAngleDegrees>
+    )>,
+    query: Query<(
+        &NetworkEntity,
+        &ComponentSnapshots<NetworkTranslation3D>
+    )>,
+    rapier: Res<RapierContext>,
+    axis: Res<TransformAxis>,
+    player_entity_map: Res<PlayerEntityMap>
+) {
+    let mut verified_hits = vec![];
+
+    for (
+        shooter_net_e,
+        mut hit_snaps, 
+        shooter_trans_snaps, 
+        shooter_rot_snaps
+    ) in shooter.iter_mut() {
+        for hit_snap in hit_snaps.frontier_ref()
+        .iter() {
+            // this might be past from the client
+            // especially for moving character
+            let tick = hit_snap.sent_tick();
+
+            let origin = match shooter_trans_snaps.find_at_tick(tick) {
+                Some(s) => s.component()
+                .to_vec3(axis.translation),
+                None=> {
+                    warn!("could not find translation at tick: {tick}");
+                    continue;
+                }
+            };
+            let dir = match shooter_rot_snaps.find_at_tick(tick) {
+                Some(s) => s.component()
+                .to_quat(axis.rotation) * CHARACTER_FORWARD,
+                None => {
+                    warn!("could not find rotation at tick: {tick}");
+                    continue;
+                }
+            };
+
+            debug!("origin: {origin} dir: {dir}");
+
+            let hit = hit_snap.event();
+            let hit_toi_sq = (origin - hit.point).length_squared(); 
+            if hit_toi_sq > FIRE_RANGE * FIRE_RANGE {
+                warn!("toi is out of fire range, discarfing");
+                continue;
+            }
+
+            let hit_client_id = ClientId::new(hit.client_id);
+            let Some(hit_entity) = player_entity_map.get(&hit_client_id) else {
+                warn!("player entity map does not have key: {hit_client_id:?}");
+                continue;
+            };
+
+            // here checks only static obstacles
+            // for further check, create parallel physics world or
+            // just iterate over query
+            if let Some((e, toi)) = rapier.cast_ray(
+                origin, 
+                dir, 
+                FIRE_RANGE, 
+                false, 
+                QueryFilter::only_fixed()
+                .exclude_sensors()
+            ) {
+                if e != *hit_entity && hit_toi_sq > toi * toi {
+                    warn!("hit should be obstracted, discarding");
+                    continue;
+                }
+            }
+            
+            let Ok((hit_net_e, hit_trans_snaps)) = query.get(*hit_entity) else {
+                warn!("query does not inclide entity: {hit_entity:?}");
+                continue;
+            };
+            
+            if hit_net_e.client_id() != hit_client_id {
+                if cfg!(debug_assertions) {
+                    panic!(
+                        "player entity map is broken, received: {:?} found: {:?}",
+                        hit_client_id,
+                        hit_net_e.client_id()
+                    );
+                } else {
+                    error!("player entity map is broken, skipping");
+                    continue;
+                }
+            }
+
+            // here checks only 2 possible positions
+            // for more accurate check, just interpolate some steps
+            let mut hit_translations = vec![];
+            match hit_trans_snaps.find_at_tick(tick - 1) {
+                Some(s) => hit_translations.push(
+                    s.component()
+                    .to_vec3(axis.translation)
+                ),
+                None => warn!("could not find hit translation at tick: {tick} - 1")
+            };
+            match hit_trans_snaps.find_at_tick(tick) {
+                Some(s) => hit_translations.push(
+                    s.component()
+                    .to_vec3(axis.translation)
+                ),
+                None => warn!("could not find hit translation at tick: {tick}")
+            };
+            
+            if hit_translations.len() == 0 {
+                warn!("no translations for check");
+                continue;
+            }
+
+            let capsule = Capsule::new_y(
+                CHARACTER_HALF_HIGHT, 
+                CHARACTER_RADIUS
+            );
+            for &t in hit_translations.iter() {
+                let m = Isometry::from_parts(t.into(), Quat::IDENTITY.into());
+                debug!("verifying hit for translation: {t}");  
+                
+                // sphere cast should be better for moving character
+                if capsule.cast_ray(
+                    &m, 
+                    &Ray::new(origin.into(), dir.into()), 
+                    FIRE_RANGE, 
+                    false
+                )
+                .is_none() {
+                    warn!("no cast hit, discarding");
+                    continue;
+                };
+
+                debug!("translation: {t} is verified hit");
+                verified_hits.push((
+                    hit_snap.received_timestamp(),
+                    (shooter_net_e.client_id(), hit_client_id)
+                ));
+                break;
+            };
+        }
+
+        hit_snaps.cache();
+    }    
+
+    if verified_hits.len() > 0 {
+        verified_hits.sort_unstable_by_key(|h| (h.0 * 1000.0) as u64);
+    }
+    
+    for verified in verified_hits.iter() {
+        info!(
+            "verified hit: from: {:?} to: {:?}",
+            verified.1.0,
+            verified.1.1
+        );
+    }
+}

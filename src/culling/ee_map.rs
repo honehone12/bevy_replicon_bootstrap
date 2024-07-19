@@ -35,7 +35,7 @@ impl<T> EntityPairMap<T> {
             (key_r, key_l)
         };
 
-        return self.0.get(&key)
+        self.0.get(&key)
     }
 
     #[inline]

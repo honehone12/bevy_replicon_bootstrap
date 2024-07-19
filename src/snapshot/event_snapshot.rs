@@ -219,7 +219,7 @@ pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
             }
 
             match snaps.insert(event.clone()) {
-                Ok(()) => debug!(
+                Ok(()) => trace!(
                     "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
                     snaps.frontier_index(),
                     snaps.frontier_len(), 
@@ -243,7 +243,7 @@ pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
 
         for mut snaps in query.iter_mut() {
             match snaps.insert(event.clone()) {
-                Ok(()) => debug!(
+                Ok(()) => trace!(
                     "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
                     snaps.frontier_index(),
                     snaps.frontier_len(), 
