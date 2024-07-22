@@ -283,6 +283,6 @@ pub fn apply_gravity_system(
 
 pub fn handle_transport_error(mut errors: EventReader<NetcodeTransportError>) {
     for e in errors.read() {
-        panic!("{e}")
+        panic!("transport error: {e}")
     }
 }

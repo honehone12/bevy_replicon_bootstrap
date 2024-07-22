@@ -348,7 +348,7 @@ fn handle_hit(
         hit_snaps.cache();
     }    
 
-    if verified_hits.len() > 0 {
+    if verified_hits.len() > 1 {
         verified_hits.sort_unstable_by_key(|h| h.0);
     }
     
