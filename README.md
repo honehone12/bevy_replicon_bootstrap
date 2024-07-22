@@ -9,7 +9,7 @@ implementing basic transform systems for netcodes.
 - basic replication grouping
 - each features can be replaced with other expert crates
 
-running development demo.  
+running development demo with Rapier3D's KinematicCharacterController.  
 
 `cargo run --bin server`   
 `cargo run --bin client`
