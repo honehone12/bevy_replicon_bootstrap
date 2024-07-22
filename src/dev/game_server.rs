@@ -189,10 +189,10 @@ fn handle_player_entity_event(
                     tick, 
                     LARGE_CACHE_SIZE
                 ).expect("sytem time looks earlier than unix epoch"),
-                EventSnapshots::<NetworkMovement2_5D>::with_capacity(
+                EventCache::<NetworkMovement2_5D>::with_capacity(
                     MEDIUM_CACHE_SIZE
                 ),
-                EventSnapshots::<NetworkHit>::with_capacity(
+                EventCache::<NetworkHit>::with_capacity(
                     SMALL_CACHE_SIZE
                 )
             ));
@@ -203,13 +203,13 @@ fn handle_player_entity_event(
 fn handle_hit(
     mut shooter: Query<(
         &NetworkEntity,
-        &mut EventSnapshots<NetworkHit>,
-        &ComponentSnapshots<NetworkTranslation3D>,
-        &ComponentSnapshots<NetworkAngleDegrees>
+        &mut EventCache<NetworkHit>,
+        &ComponentCache<NetworkTranslation3D>,
+        &ComponentCache<NetworkAngleDegrees>
     )>,
     query: Query<(
         &NetworkEntity,
-        &ComponentSnapshots<NetworkTranslation3D>
+        &ComponentCache<NetworkTranslation3D>
     )>,
     rapier: Res<RapierContext>,
     axis: Res<TransformAxis>,
@@ -219,13 +219,13 @@ fn handle_hit(
 
     for (
         shooter_net_e,
-        mut hit_snaps, 
-        shooter_trans_snaps, 
-        shooter_rot_snaps
+        mut hit_cache, 
+        shooter_trans_cache, 
+        shooter_rot_cache
     ) in shooter.iter_mut() {
-        for hit_snap in hit_snaps.frontier_ref()
+        for hit_snap in hit_cache.frontier_ref()
         .iter() {
-            let origin = match shooter_trans_snaps.latest_snapshot() {
+            let origin = match shooter_trans_cache.latest_snapshot() {
                 Some(s) => s.component()
                 .to_vec3(axis.translation),
                 None=> {
@@ -233,7 +233,7 @@ fn handle_hit(
                     continue;
                 }
             };
-            let dir = match shooter_rot_snaps.latest_snapshot() {
+            let dir = match shooter_rot_cache.latest_snapshot() {
                 Some(s) => s.component()
                 .to_quat(axis.rotation) * CHARACTER_FORWARD,
                 None => {
@@ -274,7 +274,7 @@ fn handle_hit(
                 }
             }
             
-            let Ok((hit_net_e, hit_trans_snaps)) = query.get(*hit_entity) else {
+            let Ok((hit_net_e, hit_trans_cache)) = query.get(*hit_entity) else {
                 warn!("query does not inclide entity: {hit_entity:?}");
                 continue;
             };
@@ -296,14 +296,14 @@ fn handle_hit(
             // for more accurate check, just interpolate some steps
             let mut hit_translations = vec![];
             let tick = hit_snap.sent_tick();
-            match hit_trans_snaps.find_at_tick(tick - 1) {
+            match hit_trans_cache.find_at_tick(tick - 1) {
                 Some(s) => hit_translations.push(
                     s.component()
                     .to_vec3(axis.translation)
                 ),
                 None => warn!("could not find hit translation at tick: {tick} - 1")
             };
-            match hit_trans_snaps.find_at_tick(tick) {
+            match hit_trans_cache.find_at_tick(tick) {
                 Some(s) => hit_translations.push(
                     s.component()
                     .to_vec3(axis.translation)
@@ -345,7 +345,7 @@ fn handle_hit(
             };
         }
 
-        hit_snaps.cache();
+        hit_cache.cache();
     }    
 
     if verified_hits.len() > 1 {

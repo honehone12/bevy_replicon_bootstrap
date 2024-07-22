@@ -2,7 +2,7 @@ pub mod dev;
 pub mod core;
 pub mod physics;
 pub mod control;
-pub mod snapshot; 
+pub mod cache; 
 pub mod culling;
 pub mod net_builder;
 
@@ -11,7 +11,7 @@ pub mod prelude {
         core::*,
         physics::*,
         control::*,
-        snapshot::*,
+        cache::*,
         culling::*,
         net_builder::*,
         *
@@ -122,7 +122,7 @@ impl<T> Plugin for NetworkTranslationPlugin<T>
 where T: NetworkTranslation {
     fn build(&self, app: &mut App) {
         app.replicate::<T>()
-        .add_plugins(ComponentSnapshotPlugin::<T>::new());
+        .add_plugins(ComponentCachePlugin::<T>::new());
 
         if app.world().contains_resource::<RepliconServer>() {
             app.add_systems(PostUpdate, 
@@ -159,7 +159,7 @@ impl<R> Plugin for NetworkRotationPlugin<R>
 where R: NetworkRotation {
     fn build(&self, app: &mut App) {
         app.replicate::<R>()
-        .add_plugins(ComponentSnapshotPlugin::<R>::new());
+        .add_plugins(ComponentCachePlugin::<R>::new());
 
         if app.world().contains_resource::<RepliconServer>() {
             app.add_systems(PostUpdate, 
@@ -336,7 +336,7 @@ impl<E: NetworkEvent> ClientEventPlugin<E> {
 
 impl<E: NetworkEvent> Plugin for ClientEventPlugin<E> {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ClientEventSnapshotPlugin::<E>::new())
+        app.add_plugins(ClientEventCachePlugin::<E>::new())
         .add_client_event::<E>(self.channel_kind);
     }
 }

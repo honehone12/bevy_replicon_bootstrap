@@ -46,14 +46,14 @@ impl<E: NetworkEvent> EventSnapshot<E> {
 }
 
 #[derive(Component)]
-pub struct EventSnapshots<E: NetworkEvent> {
+pub struct EventCache<E: NetworkEvent> {
     frontier: Vec<EventSnapshot<E>>,
     frontier_index: usize,
     cache: Vec<EventSnapshot<E>>,
     cache_size: usize,
 }
 
-impl<E: NetworkEvent> EventSnapshots<E> {
+impl<E: NetworkEvent> EventCache<E> {
     #[inline]
     pub fn with_capacity(cache_size: usize) -> Self {
         Self { 
@@ -203,8 +203,8 @@ impl<E: NetworkEvent> EventSnapshots<E> {
     }
 }
 
-pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
-    mut query: Query<(&NetworkEntity, &mut EventSnapshots<E>)>,
+pub(super) fn server_populate_client_event_cache<E: NetworkEvent>(
+    mut query: Query<(&NetworkEntity, &mut EventCache<E>)>,
     mut events: EventReader<FromClient<E>>
 ) {
     for FromClient { client_id, event } in events.read() {
@@ -213,17 +213,17 @@ pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
             continue;
         }
 
-        for (net_e, mut snaps) in query.iter_mut() {
+        for (net_e, mut cache) in query.iter_mut() {
             if net_e.client_id() != *client_id {
                 continue;
             }
 
-            match snaps.insert(event.clone()) {
+            match cache.insert(event.clone()) {
                 Ok(()) => trace!(
                     "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
-                    snaps.frontier_index(),
-                    snaps.frontier_len(), 
-                    snaps.cache_len()
+                    cache.frontier_index(),
+                    cache.frontier_len(), 
+                    cache.cache_len()
                 ),
                 Err(e) => warn!("discarding event snapshot: {e}")
             }
@@ -231,8 +231,8 @@ pub(super) fn server_populate_client_event_snapshots<E: NetworkEvent>(
     }
 }
 
-pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
-    mut query: Query<&mut EventSnapshots<E>, With<Owning>>,
+pub(super) fn client_populate_client_event_cache<E: NetworkEvent>(
+    mut query: Query<&mut EventCache<E>, With<Owning>>,
     mut events: EventReader<E>,
 ) {
     for event in events.read() {
@@ -241,13 +241,13 @@ pub(super) fn client_populate_client_event_snapshots<E: NetworkEvent>(
             continue;
         }
 
-        for mut snaps in query.iter_mut() {
-            match snaps.insert(event.clone()) {
+        for mut cache in query.iter_mut() {
+            match cache.insert(event.clone()) {
                 Ok(()) => trace!(
                     "inserted event snapshot: frontier index: {} frontier len: {}, cache len: {}",
-                    snaps.frontier_index(),
-                    snaps.frontier_len(), 
-                    snaps.cache_len()
+                    cache.frontier_index(),
+                    cache.frontier_len(), 
+                    cache.cache_len()
                 ),
                 Err(e) => warn!("discarding event snapshot: {e}")
             }

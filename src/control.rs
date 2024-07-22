@@ -18,7 +18,7 @@ use crate::prelude::*;
 pub struct NetworCharacterkTranslationBundle<T>
 where T: NetworkTranslation {
     pub translation: T,
-    pub snaps: ComponentSnapshots<T>,
+    pub cache: ComponentCache<T>,
     pub prediction_error: PredioctionError<T>
 }
 
@@ -32,7 +32,7 @@ where T: NetworkTranslation{
         cache_size: usize
     ) -> anyhow::Result<Self> {
         let translation = T::from_vec3(init, axis);
-        let snaps = ComponentSnapshots::with_init(
+        let cache = ComponentCache::with_init(
             translation,
             tick,
             cache_size
@@ -40,7 +40,7 @@ where T: NetworkTranslation{
         
         Ok(Self{ 
             translation, 
-            snaps ,
+            cache ,
             prediction_error: default()
         })
     }
@@ -50,7 +50,7 @@ where T: NetworkTranslation{
 pub struct NetworkCharacterRotationBundle<R>
 where R: NetworkRotation {
     pub rotation: R,
-    pub snaps: ComponentSnapshots<R>,
+    pub cache: ComponentCache<R>,
     pub prediction_error: PredioctionError<R>
 }
 
@@ -64,7 +64,7 @@ where R: NetworkRotation {
         cache_size: usize
     ) -> anyhow::Result<Self> {
         let rotation = R::from_quat(init, axis);
-        let snaps = ComponentSnapshots::with_init(
+        let cache = ComponentCache::with_init(
             rotation,
             tick,
             cache_size
@@ -72,7 +72,7 @@ where R: NetworkRotation {
       
         Ok(Self{ 
             rotation, 
-            snaps,
+            cache,
             prediction_error: default() 
         })
     }
@@ -82,7 +82,7 @@ where R: NetworkRotation {
 pub struct NetworkTranslationBundle<T>
 where T: NetworkTranslation {
     pub translation: T,
-    pub snaps: ComponentSnapshots<T>  
+    pub cache: ComponentCache<T>  
 }
 
 impl<T> NetworkTranslationBundle<T>
@@ -95,7 +95,7 @@ where T: NetworkTranslation {
         cache_size: usize
     ) -> anyhow::Result<Self> {
         let translation = T::from_vec3(init, axis);
-        let snaps = ComponentSnapshots::with_init(
+        let cache = ComponentCache::with_init(
             translation, 
             tick, 
             cache_size
@@ -103,7 +103,7 @@ where T: NetworkTranslation {
 
         Ok(Self { 
             translation, 
-            snaps
+            cache
         })
     }
 }
@@ -112,7 +112,7 @@ where T: NetworkTranslation {
 pub struct NetworkRotationBundle<R>
 where R: NetworkRotation {
     pub rotation: R,
-    pub snaps: ComponentSnapshots<R>
+    pub cache: ComponentCache<R>
 }
 
 impl<R> NetworkRotationBundle<R>
@@ -125,7 +125,7 @@ where R: NetworkRotation {
         cache_size: usize,
     ) -> anyhow::Result<Self> {
         let rotation = R::from_quat(init, axis);
-        let snaps = ComponentSnapshots::with_init(
+        let cache = ComponentCache::with_init(
             rotation, 
             tick, 
             cache_size
@@ -133,7 +133,7 @@ where R: NetworkRotation {
 
         Ok(Self { 
             rotation, 
-            snaps
+            cache
         })
     }
 }

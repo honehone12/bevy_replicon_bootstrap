@@ -42,13 +42,13 @@ impl<C: Component + Clone> ComponentSnapshot<C> {
 }
 
 #[derive(Component)]
-pub struct ComponentSnapshots<C: Component + Clone> {
+pub struct ComponentCache<C: Component + Clone> {
     frontier: Vec<ComponentSnapshot<C>>,
     cache: Vec<ComponentSnapshot<C>>,
     cache_size: usize
 }
 
-impl<C: Component + Clone> ComponentSnapshots<C> {
+impl<C: Component + Clone> ComponentCache<C> {
     #[inline]
     pub fn with_capacity(cache_size: usize) -> Self {
         Self{
@@ -61,9 +61,9 @@ impl<C: Component + Clone> ComponentSnapshots<C> {
     #[inline]
     pub fn with_init(init: C, tick: u32, cache_size: usize) 
     -> anyhow::Result::<Self> {
-        let mut snaps = Self::with_capacity(cache_size);
-        match snaps.insert(init, tick) {
-            Ok(()) => Ok(snaps),
+        let mut cache = Self::with_capacity(cache_size);
+        match cache.insert(init, tick) {
+            Ok(()) => Ok(cache),
             Err(e) => Err(e) 
         }
     }
@@ -300,46 +300,46 @@ impl<C: Component + Clone> ComponentSnapshots<C> {
     }
 }
 
-pub(super) fn server_populate_component_snapshots<C>(
+pub(super) fn server_populate_component_cache<C>(
     mut query: Query<
-        (&C, &mut ComponentSnapshots<C>), 
+        (&C, &mut ComponentCache<C>), 
         Changed<C>
     >,
     server_tick: Res<ServerTick>
 )
 where C: Component + Clone { 
     let tick = server_tick.get();
-    for (c, mut snaps) in query.iter_mut() {
-        match snaps.insert(c.clone(), tick) {
+    for (c, mut cache) in query.iter_mut() {
+        match cache.insert(c.clone(), tick) {
             Ok(()) => trace!(
                 "inserted component snapshot: frontier len: {}, cache len: {}",
-                snaps.frontier_len(),
-                snaps.cache_len()
+                cache.frontier_len(),
+                cache.cache_len()
             ),
             Err(e) => warn!("discarding component snapshot: {e}") 
         }
     }
 }
 
-pub(super) fn client_populate_component_snapshots<C>(
+pub(super) fn client_populate_component_cache<C>(
     mut query: Query<( 
         &C, 
-        &mut ComponentSnapshots<C>,
+        &mut ComponentCache<C>,
         &confirm_history::ConfirmHistory
     ), 
         Changed<C>
     >,
 )
 where C: Component + Clone {
-    for (c, mut snaps, confirmed_tick) in query.iter_mut() {
+    for (c, mut cache, confirmed_tick) in query.iter_mut() {
         // this as latest replication should be latest tick for this client
         // because this is changed at this tick
         let tick = confirmed_tick.last_tick().get();
-        match snaps.insert(c.clone(), tick) {
+        match cache.insert(c.clone(), tick) {
             Ok(()) => trace!(
                 "inserted component snapshot frontier len: {}, cache len: {}",
-                snaps.frontier_len(),
-                snaps.cache_len()
+                cache.frontier_len(),
+                cache.cache_len()
             ),
             Err(e) => warn!("discarding component snapshot: {e}")
         }

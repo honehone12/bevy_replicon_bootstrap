@@ -163,7 +163,7 @@ pub enum Ball {
     ClientPrediction
 }
 
-pub fn ground_check_system(
+fn ground_check_system(
     mut query: Query<(
         &Transform,
         &KinematicCharacterController,
@@ -189,12 +189,12 @@ pub fn ground_check_system(
     }
 }
 
-pub fn update_character_controller_system(
+fn update_character_controller_system(
     mut query: Query<(
         &mut Transform,
         &mut KinematicCharacterController,
         &mut Jump,
-        &mut EventSnapshots<NetworkMovement2_5D>
+        &mut EventCache<NetworkMovement2_5D>
     )>,
     params: Res<PlayerMovementParams>,
     time: Res<Time<Fixed>>
@@ -252,7 +252,7 @@ pub fn update_character_controller_system(
     }
 }
 
-pub fn apply_gravity_system(
+fn apply_gravity_system(
     mut query: Query<(
         &mut KinematicCharacterController, 
         &mut Jump

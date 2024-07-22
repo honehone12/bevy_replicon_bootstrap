@@ -57,7 +57,7 @@ impl Plugin for GameClientPlugin {
 }
 
 #[derive(Event, Default)]
-pub struct Action {
+struct Action {
     pub movement_vec: Vec2,
     pub rotation_vec: Vec2,
     pub has_jump: bool,
@@ -79,7 +79,7 @@ impl Action {
 }
 
 #[derive(Event)]
-pub struct Fire;
+struct Fire;
 
 fn handle_input(
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -211,12 +211,12 @@ fn handle_ball_spawned(
                 commands.entity(e)
                 .insert((
                     RigidBody::KinematicPositionBased,
-                    ComponentSnapshots::<NetworkTranslation3D>::with_init(
+                    ComponentCache::<NetworkTranslation3D>::with_init(
                         *net_trans,
                         tick, 
                         SMALL_CACHE_SIZE
                     ).expect("sytem time looks earlier than unix epoch"),
-                    ComponentSnapshots::<NetworkEuler>::with_init(
+                    ComponentCache::<NetworkEuler>::with_init(
                         *net_rot, 
                         tick, 
                         SMALL_CACHE_SIZE
@@ -284,12 +284,12 @@ fn handle_player_spawned(
                 },
                 ..default()
             },
-            ComponentSnapshots::with_init(
+            ComponentCache::with_init(
                 *net_trans, 
                 tick, 
                 SMALL_CACHE_SIZE
             ).expect("sytem time looks earlier than unix epoch"),
-            ComponentSnapshots::with_init(
+            ComponentCache::with_init(
                 *net_rot, 
                 tick, 
                 SMALL_CACHE_SIZE
@@ -309,7 +309,7 @@ fn handle_player_spawned(
                     CHARACTER_MASS
                 ),
                 Jump::default(),
-                EventSnapshots::<NetworkMovement2_5D>::with_capacity(MEDIUM_CACHE_SIZE)
+                EventCache::<NetworkMovement2_5D>::with_capacity(MEDIUM_CACHE_SIZE)
             ));
         } else {
             commands.entity(e)
