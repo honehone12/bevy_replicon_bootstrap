@@ -226,26 +226,19 @@ fn handle_hit(
     ) in shooter.iter_mut() {
         for hit_snap in hit_snaps.frontier_ref()
         .iter() {
-            // !!
-            // this might be past from the client
-            // especially for moving character
-            let tick = hit_snap.sent_tick();
-
-            // !!
-            // it might be better to use just latest snapshot for shooter
-            let origin = match shooter_trans_snaps.find_at_tick(tick) {
+            let origin = match shooter_trans_snaps.latest_snapshot() {
                 Some(s) => s.component()
                 .to_vec3(axis.translation),
                 None=> {
-                    warn!("could not find translation at tick: {tick}");
+                    warn!("could not find latest translation");
                     continue;
                 }
             };
-            let dir = match shooter_rot_snaps.find_at_tick(tick) {
+            let dir = match shooter_rot_snaps.latest_snapshot() {
                 Some(s) => s.component()
                 .to_quat(axis.rotation) * CHARACTER_FORWARD,
                 None => {
-                    warn!("could not find rotation at tick: {tick}");
+                    warn!("could not find latest rotation");
                     continue;
                 }
             };
@@ -303,6 +296,7 @@ fn handle_hit(
             // here checks only 2 possible positions
             // for more accurate check, just interpolate some steps
             let mut hit_translations = vec![];
+            let tick = hit_snap.sent_tick();
             match hit_trans_snaps.find_at_tick(tick - 1) {
                 Some(s) => hit_translations.push(
                     s.component()
