@@ -37,7 +37,10 @@ fn main() {
     .add_plugins(builder.build_replicon())
     .add_plugins(GameServerPlugin);
 
-    match builder.build_transport(app.world.resource::<RepliconChannels>()) {
+    match builder.build_transport(
+        app.world()
+        .resource::<RepliconChannels>()
+    ) {
         Ok((server, renet, netcode)) => {
             app.insert_resource(server)
             .insert_resource(renet)

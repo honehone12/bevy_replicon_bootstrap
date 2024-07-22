@@ -1,9 +1,11 @@
 use bevy::{
     math::Vec3,
-    render::color::Color,
-    utils::{Uuid, SystemTime},
+    color::Srgba,
+    utils::SystemTime,
     log::Level
 };
+use bevy::color::palettes::basic as color_palettes;
+use uuid::Uuid;
 
 pub const LOG_LEVEL: Level = Level::INFO;
 
@@ -92,8 +94,8 @@ pub const BALL_POSITION_1: Vec3 = Vec3::new(5.0, 1.0, 0.0);
 pub const BALL_POSITION_2: Vec3 = Vec3::new(-5.0, 1.0, 0.0);
 pub const BALL_POSITION_3: Vec3 = Vec3::new(0.0, 1.0, 5.0);
 pub const BALL_POSITION_4: Vec3 = Vec3::new(0.0, 1.0, -5.0);
-pub const BALL_COLOR_1: Color = Color::BLUE;
-pub const BALL_COLOR_2: Color = Color::RED;
+pub const BALL_COLOR_1: Srgba = color_palettes::BLUE;
+pub const BALL_COLOR_2: Srgba = color_palettes::RED;
 
 pub const BASE_SPEED: f32 = 10.0;
 pub const BASE_ANGULAR_SPEED: f32 = 5.0; 

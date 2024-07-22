@@ -146,7 +146,8 @@ impl<G: RelevantGroup> RelevantGroupPlugin<G> {
 
 impl<G: RelevantGroup> Plugin for RelevantGroupPlugin<G> {
     fn build(&self, app: &mut App) {
-        if app.world.contains_resource::<RepliconServer>() {
+        if app.world()
+        .contains_resource::<RepliconServer>() {
             app.insert_resource(RelevancyMap::<G>::default())
             .add_systems(PreUpdate, 
                 handle_player_entity_event::<G>

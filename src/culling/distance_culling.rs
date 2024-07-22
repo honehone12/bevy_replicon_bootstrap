@@ -157,7 +157,8 @@ pub struct DistanceCullingPlugin {
 
 impl Plugin for DistanceCullingPlugin {
     fn build(&self, app: &mut App) {
-        if app.world.contains_resource::<RepliconServer>() {
+        if app.world()
+        .contains_resource::<RepliconServer>() {
             app.insert_resource(DistanceMap::default())
             .insert_resource(CullingConfig{
                 culling_threshold: self.culling_threshold

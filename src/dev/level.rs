@@ -3,7 +3,7 @@ use bevy_rapier3d::prelude::*;
 use crate::core::PlayerStart;
 
 pub const FLOOR_SIZE: Vec3 = Vec3::new(50.0, 1.0, 50.0);
-pub const FLOOR_COLOR: Color = Color::rgb(0.5, 0.5, 0.5);
+pub const FLOOR_COLOR: Color = Color::srgb(0.5, 0.5, 0.5);
 pub const FLOOR_POSITION: Vec3 = Vec3::new(0.0, -0.5, 0.0);
 pub const LIGHT_POSITION: Vec3 = Vec3::new(0.0, 50.0, 0.0);
 pub const LIGHT_ROTATION_X: f32 = -std::f32::consts::PI / 4.0;

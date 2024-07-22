@@ -82,7 +82,7 @@ impl PlayerPresentation {
     #[inline]
     pub fn random() -> Self {
         Self{
-            color: Color::rgb(
+            color: Color::srgb(
                 random(), 
                 random(), 
                 random()

@@ -12,7 +12,7 @@ pub struct Rapier3DPlugin {
 
 impl Plugin for Rapier3DPlugin {
     fn build(&self, app: &mut App) {
-        let mut config = RapierConfiguration::from_world(&mut app.world);
+        let mut config = RapierConfiguration::from_world(&mut app.world_mut());
         config.timestep_mode = TimestepMode::Fixed { 
             dt: self.delta_time, 
             substeps: self.substeps 
@@ -24,7 +24,8 @@ impl Plugin for Rapier3DPlugin {
             .in_fixed_schedule()
         );
 
-        if app.world.contains_resource::<RepliconClient>() {
+        if app.world()
+        .contains_resource::<RepliconClient>() {
             app.add_plugins(RapierDebugRenderPlugin::default());
         }
     }

@@ -1,4 +1,4 @@
-use bevy::utils::Uuid;
+use uuid::Uuid;
 use bevy_replicon::server::server_tick::ServerTick;
 use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
 use bevy_replicon_renet::renet::{ClientId as RenetClientId, RenetServer};
@@ -226,10 +226,13 @@ fn handle_hit(
     ) in shooter.iter_mut() {
         for hit_snap in hit_snaps.frontier_ref()
         .iter() {
+            // !!
             // this might be past from the client
             // especially for moving character
             let tick = hit_snap.sent_tick();
 
+            // !!
+            // it might be better to use just latest snapshot for shooter
             let origin = match shooter_trans_snaps.find_at_tick(tick) {
                 Some(s) => s.component()
                 .to_vec3(axis.translation),

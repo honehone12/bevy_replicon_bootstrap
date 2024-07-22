@@ -1,5 +1,6 @@
 use bevy::input::mouse::MouseMotion;
 use bevy_replicon::client::confirm_history::ConfirmHistory;
+use bevy::color::palettes::basic as color_palettes;
 use super::{
     level::*, 
     * 
@@ -186,8 +187,8 @@ fn handle_ball_spawned(
         confirmed_tick
     ) in query.iter() {
         let material = match ball {
-            Ball::ServerSimulation => materials.add(BALL_COLOR_1),
-            Ball::ClientPrediction => materials.add(BALL_COLOR_2),
+            Ball::ServerSimulation => materials.add(Color::from(BALL_COLOR_1)),
+            Ball::ClientPrediction => materials.add(Color::from(BALL_COLOR_2)),
         };
 
         commands.entity(e)
@@ -385,7 +386,7 @@ fn draw_gizmos_system(
         gizmos.ray(
             transform.translation, 
             transform.forward() * FIRE_RANGE, 
-            Color::CYAN
+            color_palettes::AQUA
         );
     }
 
@@ -396,7 +397,7 @@ fn draw_gizmos_system(
             net_trans.0, 
             Quat::IDENTITY, 
             RADIUS,
-            Color::GREEN 
+            color_palettes::GREEN 
         );
     }
 }

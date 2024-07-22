@@ -21,12 +21,12 @@ impl<E: NetworkEvent> ClientEventSnapshotPlugin<E> {
 
 impl<E: NetworkEvent> Plugin for ClientEventSnapshotPlugin<E> {
     fn build(&self, app: &mut App) {
-        if app.world.contains_resource::<RepliconServer>() {
+        if app.world().contains_resource::<RepliconServer>() {
             app.add_systems(PreUpdate, 
                 server_populate_client_event_snapshots::<E>
                 .in_set(ServerBootSet::UnboxEvent)    
             );
-        } else if app.world.contains_resource::<RepliconClient>() {
+        } else if app.world().contains_resource::<RepliconClient>() {
             app.add_systems(PostUpdate, 
                 client_populate_client_event_snapshots::<E>
             );
@@ -50,12 +50,12 @@ where C: Component + Serialize + DeserializeOwned + Clone {
 impl<C> Plugin for ComponentSnapshotPlugin<C>
 where C: Component + Serialize + DeserializeOwned + Clone {
     fn build(&self, app: &mut App) {
-        if app.world.contains_resource::<RepliconServer>() {
+        if app.world().contains_resource::<RepliconServer>() {
             app.add_systems(PostUpdate,
                 server_populate_component_snapshots::<C>
                 .in_set(ServerBootSet::Cache)
             );
-        } else if app.world.contains_resource::<RepliconClient>() {
+        } else if app.world().contains_resource::<RepliconClient>() {
             app.add_systems(PreUpdate, 
                 client_populate_component_snapshots::<C>
                 .in_set(ClientBootSet::UnboxReplication)

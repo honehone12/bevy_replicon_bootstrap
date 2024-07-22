@@ -1,16 +1,16 @@
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use bevy::{
-    app::PluginGroupBuilder, 
     prelude::*,
     utils::SystemTime
 };
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{
+    server::RepliconRenetServerPlugin,
     renet::{
         transport::{NetcodeServerTransport, ServerAuthentication}, 
         ConnectionConfig, RenetServer
     }, 
-    RenetChannelsExt, RepliconRenetClientPlugin, RepliconRenetPlugins
+    RenetChannelsExt
 };
 use bevy_replicon_renet::renet::transport::ServerConfig as RenetServerConfig;
 
@@ -27,7 +27,8 @@ pub struct ServerBuilder {
 }
 
 impl ServerBuilder {
-    pub fn build_replicon(&self) -> (PluginGroupBuilder, PluginGroupBuilder) {
+    pub fn build_replicon(&self) 
+    -> (impl PluginGroup, impl Plugin) {
         let replicon = RepliconPlugins.build()
         .disable::<ClientPlugin>()
         .set(
@@ -37,10 +38,8 @@ impl ServerBuilder {
                 ..default()
             }
         );
-        let replicon_renet = RepliconRenetPlugins.build()
-        .disable::<RepliconRenetClientPlugin>(); 
         
-        (replicon, replicon_renet)
+        (replicon, RepliconRenetServerPlugin)
     }
 
     pub fn build_transport(&self, net_channels: &RepliconChannels) 

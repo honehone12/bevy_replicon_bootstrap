@@ -16,10 +16,11 @@ codegen-units = 1
 
 [dependencies]
 anyhow = "1.0.86"
-bevy = "0.13.2"
-bevy_replicon = "0.26.3"
-bevy_replicon_renet = "0.3.0"
+bevy = "0.14.0"
+bevy_replicon = "0.27.0"
+bevy_replicon_renet = "0.4.0"
 rand = "0.8.5"
 serde = "1.0.203"
-bevy_rapier3d = { version = "0.26.0", default-features = false, features = ["dim3", "debug-render-3d"] }
-rapier3d = "0.19.0"
+bevy_rapier3d = { version = "0.27.0", default-features = false, features = ["dim3", "debug-render-3d"] }
+rapier3d = "0.21.0"
+uuid = "1.10.0"
