@@ -36,8 +36,7 @@ impl Plugin for GameServerPlugin {
         .add_systems(Update, (
             handle_transport_error,
             handle_server_event,
-            handle_player_entity_event,
-            handle_hit
+            handle_player_entity_event
         ).chain())
         .add_systems(PostUpdate, 
             handle_hit
