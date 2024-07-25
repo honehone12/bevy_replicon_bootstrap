@@ -17,3 +17,7 @@ pub enum ClientBootSet {
     ApplyReplication,
     Cache
 }
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+
+pub struct BootsetMain;

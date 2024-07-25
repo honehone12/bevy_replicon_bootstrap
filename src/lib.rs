@@ -36,6 +36,10 @@ impl Plugin for NetworkBootPlugin {
         .insert_resource(self.replication_config.clone())
         .insert_resource(self.interpolation_config.clone())
         .insert_resource(self.prediction_config.clone())
+        .configure_sets(FixedUpdate, 
+            BootsetMain
+            .before(BEFORE_PHYSICS_SET)
+        )
         .configure_sets(PreUpdate, 
             ClientBootSet::UnboxReplication
             .after(ClientSet::Receive)

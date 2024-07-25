@@ -69,7 +69,7 @@ impl Plugin for GameCommonPlugin {
             update_character_controller_system,
             apply_gravity_system
         ).chain(
-        ).before(BEFORE_PHYSICS_SET));
+        ).in_set(BootsetMain));
     }
 }
 
