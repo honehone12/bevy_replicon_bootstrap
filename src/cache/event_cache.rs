@@ -169,6 +169,44 @@ impl<E: NetworkEvent> EventCache<E> {
         .sort_unstable_by_key(|s| s.index());
     }
 
+    pub fn cache_n(&mut self, n: usize) {
+        if n == 0 {
+            return;
+        }
+
+        let frontier_len = self.frontier_len();
+        if frontier_len < n {
+            return;
+        }
+
+        if self.cache_size == 0 {
+            self.frontier.drain(..n);
+            return;
+        }
+
+        if n > self.cache_size {
+            self.cache.clear();
+            let uncacheable = n - self.cache_size;
+            self.frontier.drain(..uncacheable);
+            let drain = self.frontier.drain(..self.cache_size);
+            self.cache.append(&mut drain.collect());
+
+            debug_assert!(self.frontier_len() == frontier_len - n);
+            debug_assert!(self.cache_len() == self.cache_size);
+            return;
+        }
+
+        if self.cache_len() + n > self.cache_size {
+            self.cache.drain(..n);
+        }
+
+        let drain = self.frontier.drain(..n);
+        self.cache.append(&mut drain.collect());
+
+        debug_assert!(self.frontier_len() == frontier_len - n);
+        debug_assert!(self.cache_len() <= self.cache_size);
+    }
+
     pub fn cache(&mut self) {
         let mut frontier_len = self.frontier_len();
         if frontier_len == 0 {

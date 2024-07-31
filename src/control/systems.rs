@@ -242,9 +242,8 @@ E: NetworkMovement {
                 .index();
 
                 warn!(
-                    "sending translation force replication for: {:?}: index: {}", 
-                    net_e.client_id(),
-                    last_idx
+                    "sending translation force replication for: {:?}", 
+                    net_e.client_id()
                 );
 
                 trans_force_repl.send(CorrectTranslation { 
@@ -332,9 +331,8 @@ E: NetworkMovement {
                 .index();
                 
                 warn!(
-                    "sending rotation force replication for: {:?}: indec: {}", 
+                    "sending rotation force replication for: {:?}", 
                     net_e.client_id(),
-                    last_idx
                 );
 
                 rot_force_repl.send(ToClients{
@@ -352,7 +350,7 @@ E: NetworkMovement {
 
 pub(crate) fn handle_correct_translation<T, E>(
     mut query: Query<(
-        &mut Transform, 
+        &mut Transform,
         &T,
         &mut EventCache<E>
     ), 
@@ -365,8 +363,8 @@ where
 T: NetworkTranslation,
 E: NetworkMovement {
     let Ok((
-        mut transform, 
-        net_trans,
+        mut transform,
+        net_trans, 
         mut movements
     )) = query.get_single_mut() else {
         return;
@@ -376,7 +374,7 @@ E: NetworkMovement {
 
     for e in force_replication.read() {
         warn!(
-            "force replicate translation: index: {}",
+            "force replicate translation, last index: {}",
             e.last_index
         );
 
@@ -387,8 +385,15 @@ E: NetworkMovement {
             let frontier_next = movements.frontier_front()
             .unwrap()
             .index();
-            debug!("frontier next index: {frontier_next}");
-            if frontier_next  <= next_idx {
+            info!("frontier next index: {frontier_next}");
+            
+            if frontier_next <= next_idx {
+                let skip = next_idx - frontier_next;
+                if skip > 0 {
+                    movements.cache_n(skip);
+                    info!("skipping {skip} events");
+                }
+
                 transform.translation = net_trans.to_vec3(axis.translation);
                 continue;
             }
@@ -412,7 +417,7 @@ E: NetworkMovement {
 
         if resend.len() > 0 {
             sort = true;
-            debug!("{} events were resent", resend.len());
+            info!("{} events were resent", resend.len());
         }
 
         for m in resend {
@@ -453,7 +458,7 @@ E: NetworkMovement {
 
     for e in force_replication.read() {
         warn!(
-            "force replicate rotation: index: {}",
+            "force replicate rotation, last index: {}",
             e.last_index
         );
 
@@ -464,8 +469,14 @@ E: NetworkMovement {
             let frontier_next = movements.frontier_front()
             .unwrap()
             .index();
-            debug!("frontier next index: {frontier_next}");
-            if frontier_next  <= next_idx {
+            info!("frontier next index: {frontier_next}");
+            if frontier_next <= next_idx {
+                let skip = next_idx - frontier_next;
+                if skip > 0 {
+                    movements.cache_n(skip);
+                    info!("skipping {skip} events");
+                }
+
                 transform.rotation = net_rot.to_quat(axis.rotation);
                 continue;
             }
@@ -489,7 +500,7 @@ E: NetworkMovement {
 
         if resend.len() > 0 {
             sort = true;
-            debug!("{} events were resent", resend.len());
+            info!("{} events were resent", resend.len());
         }
 
         for m in resend {
