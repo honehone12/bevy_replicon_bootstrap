@@ -13,11 +13,9 @@ use bevy_replicon_renet::{
     RenetChannelsExt
 };
 use bevy_replicon_renet::renet::transport::ServerConfig as RenetServerConfig;
+use crate::core::network_resource::*;
 
-#[derive(Resource)]
-pub struct Server;
-
-pub struct ServerBuilder {
+pub struct RenetServerBuilder {
     pub network_tick_rate: u16,
     pub listen_addr: IpAddr,
     pub listen_port: u16,
@@ -26,7 +24,7 @@ pub struct ServerBuilder {
     pub max_clients: usize
 }
 
-impl ServerBuilder {
+impl RenetServerBuilder {
     pub fn build_replicon(&self) 
     -> (impl PluginGroup, impl Plugin) {
         let replicon = RepliconPlugins.build()

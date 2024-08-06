@@ -12,23 +12,9 @@ use bevy_replicon_renet::{
     }, 
     RenetChannelsExt
 };
+use crate::core::network_resource::*;
 
-#[derive(Resource)]
-pub struct Client(u64);
-
-impl Client {
-    #[inline]
-    pub fn id(&self) -> u64 {
-        self.0
-    }
-
-    #[inline]
-    pub fn this_client(&self, client_id: &ClientId) -> bool {
-        self.0 == client_id.get()
-    }
-}
-
-pub struct ClientBuilder {
+pub struct RenetClientBuilder {
     pub client_addr: IpAddr,
     pub server_addr: IpAddr,
     pub server_port: u16,
@@ -40,7 +26,7 @@ pub struct ClientBuilder {
     pub token_expire_seconds: u64,
 }
 
-impl ClientBuilder {
+impl RenetClientBuilder {
     pub fn build_replicon(&self)
     -> (impl PluginGroup, impl Plugin) {
         let replicon = RepliconPlugins.build()
@@ -72,6 +58,6 @@ impl ClientBuilder {
         let auth = ClientAuthentication::Secure {connect_token};
         let netcode_transport = NetcodeClientTransport::new(current_time, auth, socket)?;
         
-        Ok((Client(self.client_id), renet_client, netcode_transport))    
+        Ok((Client::new(self.client_id), renet_client, netcode_transport))    
     }
 }

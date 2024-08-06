@@ -16,7 +16,7 @@ use bevy_replicon_bootstrap::{
 
 fn main() {
     let mut app = App::new();
-    let builder = ServerBuilder{
+    let builder = RenetServerBuilder{
         network_tick_rate: DEV_NETWORK_TICK_RATE,
         listen_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
         listen_port: DEV_SERVER_LISTEN_PORT,

@@ -9,7 +9,7 @@ use bevy_replicon_bootstrap::{
 
 fn main() {
     let mut app = App::new();
-    let builder = ClientBuilder{
+    let builder = RenetClientBuilder{
         client_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
         server_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
         server_port: DEV_SERVER_LISTEN_PORT,

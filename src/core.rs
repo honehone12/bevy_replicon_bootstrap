@@ -1,5 +1,6 @@
 pub mod network_entity;
 pub mod network_event;
+pub mod network_resource;
 pub mod player_entity;
 pub mod interpolation;
 pub mod prediction;
@@ -9,6 +10,7 @@ pub mod latest_confirmed_tick;
 
 pub use network_entity::*;
 pub use network_event::*;
+pub use network_resource::*;
 pub use player_entity::*; 
 pub use interpolation::*;
 pub use prediction::*;
