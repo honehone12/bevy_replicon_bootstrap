@@ -13,7 +13,6 @@ use bevy_replicon_renet::{
     RenetChannelsExt
 };
 use bevy_replicon_renet::renet::transport::ServerConfig as RenetServerConfig;
-use crate::core::network_resource::*;
 
 pub struct RenetServerBuilder {
     pub network_tick_rate: u16,
@@ -25,7 +24,7 @@ pub struct RenetServerBuilder {
 }
 
 impl RenetServerBuilder {
-    pub fn build_replicon(&self) 
+    pub fn build_plugin(&self) 
     -> (impl PluginGroup, impl Plugin) {
         let replicon = RepliconPlugins.build()
         .disable::<ClientPlugin>()
@@ -40,11 +39,12 @@ impl RenetServerBuilder {
         (replicon, RepliconRenetServerPlugin)
     }
 
-    pub fn build_transport(&self, net_channels: &RepliconChannels) 
-    -> anyhow::Result<(Server, RenetServer, NetcodeServerTransport)> {
+    pub fn build_transport(self, world: &World) 
+    -> anyhow::Result<(RenetServer, NetcodeServerTransport)> {
+        let replicon_channels = world.resource::<RepliconChannels>();
         let renet_server = RenetServer::new(ConnectionConfig{
-            server_channels_config: net_channels.get_server_configs(),
-            client_channels_config: net_channels.get_client_configs(),
+            server_channels_config: replicon_channels.get_server_configs(),
+            client_channels_config: replicon_channels.get_client_configs(),
             ..default()
         });
 
@@ -69,6 +69,6 @@ impl RenetServerBuilder {
         )?;
 
         info!("server built at: {listen_addr}");
-        Ok((Server, renet_server, netcode_transport))
+        Ok((renet_server, netcode_transport))
     }
 }

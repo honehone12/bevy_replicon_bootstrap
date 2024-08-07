@@ -1,7 +1,7 @@
-use uuid::Uuid;
+//use uuid::Uuid;
 use bevy_replicon::server::server_tick::ServerTick;
-use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
-use bevy_replicon_renet::renet::{ClientId as RenetClientId, RenetServer};
+//use bevy_replicon_renet::renet::transport::NetcodeServerTransport;
+//use bevy_replicon_renet::renet::{ClientId as RenetClientId, RenetServer};
 use rapier3d::geometry::{Capsule, Ray, RayCast};
 use level::*;
 use rapier3d::math::Isometry;
@@ -34,7 +34,7 @@ impl Plugin for GameServerPlugin {
             setup_ball
         ).chain())
         .add_systems(Update, (
-            handle_transport_error,
+            //handle_netcode_transport_error,
             handle_server_event,
             handle_player_entity_event
         ).chain())
@@ -112,33 +112,35 @@ fn setup_ball(mut commands: Commands) {
 
 fn handle_server_event(
     mut events: EventReader<ServerEvent>,
-    netcode_server: Res<NetcodeServerTransport>,
-    mut renet_server: ResMut<RenetServer>
+    //netcode_server: Res<NetcodeServerTransport>,
+    //mut renet_server: ResMut<RenetServer>
 ) {
     for e in events.read() {
         match e {
             ServerEvent::ClientConnected { client_id } => {
-                let renet_client_id = RenetClientId::from_raw(client_id.get());
+                // let renet_client_id = RenetClientId::from_raw(client_id.get());
                 
-                let user_data = match netcode_server.user_data(renet_client_id) {
-                    Some(u) => u,
-                    None => {
-                        warn!("no user data for client: {:?}", client_id);
-                        renet_server.disconnect(renet_client_id);
-                        continue;
-                    }
-                };
+                // let user_data = match netcode_server.user_data(renet_client_id) {
+                //     Some(u) => u,
+                //     None => {
+                //         warn!("no user data for client: {:?}", client_id);
+                //         renet_server.disconnect(renet_client_id);
+                //         continue;
+                //     }
+                // };
 
-                let uuid = match Uuid::from_slice(&user_data[0..16]) {
-                    Ok(u) => u,
-                    Err(e) => {
-                        warn!("malformatted uuid for client: {:?}: {e}", client_id);
-                        renet_server.disconnect(renet_client_id);
-                        continue;
-                    }
-                };
+                // let uuid = match Uuid::from_slice(&user_data[0..16]) {
+                //     Ok(u) => u,
+                //     Err(e) => {
+                //         warn!("malformatted uuid for client: {:?}: {e}", client_id);
+                //         renet_server.disconnect(renet_client_id);
+                //         continue;
+                //     }
+                // };
 
-                info!("client: {client_id:?} uuid: {uuid} connected");
+                // info!("client: {client_id:?} uuid: {uuid} connected");
+
+                info!("client: {client_id:?} connected");
             }
             ServerEvent::ClientDisconnected { client_id, reason } => {
                 info!("client: {client_id:?} disconnected with reason: {reason}");

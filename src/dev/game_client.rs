@@ -45,7 +45,7 @@ impl Plugin for GameClientPlugin {
             client_setup_walls
         ))
         .add_systems(Update, (
-            handle_transport_error,
+            //handle_renetcode_error,
             handle_player_spawned,
             handle_ball_spawned,
             handle_input, 
@@ -258,7 +258,7 @@ fn handle_player_spawned(
     >,
     mut entity_player_map: ResMut<EntityPlayerMap>,
     axis: Res<TransformAxis>,
-    client: Res<Client>
+    replicon_client: Res<RepliconClient>
 ) {
     for (
         e, net_e, 
@@ -266,6 +266,14 @@ fn handle_player_spawned(
         net_trans, net_rot, 
         confirmed_tick
     ) in query.iter() {
+        let this_client_id = match replicon_client.status() {
+            RepliconClientStatus::Connected { client_id: Some(id) } => id,
+            _ => {
+                error!("client status is not connected");
+                continue;
+            }
+        };
+
         let tick = confirmed_tick.last_tick()
         .get();
 
@@ -298,7 +306,7 @@ fn handle_player_spawned(
         .id();
 
         let client_id = net_e.client_id();
-        if client.this_client(&client_id) {
+        if this_client_id == client_id {
             commands.entity(e)
             .insert((
                 Owning,
@@ -311,6 +319,7 @@ fn handle_player_spawned(
                 Jump::default(),
                 EventCache::<NetworkMovement2_5D>::with_capacity(MEDIUM_CACHE_SIZE)
             ));
+            info!("this is the owner of the spawned entity");
         } else {
             commands.entity(e)
             .insert(CharacterControllerBundle::replica(
@@ -322,7 +331,7 @@ fn handle_player_spawned(
         entity_player_map.try_insert(entity, client_id)
         .expect("same entity is already mapped");
 
-        info!("player: {:?} spawned at tick: {}", net_e.client_id(), tick);
+        info!("player: {:?} spawned at tick: {}", client_id, tick);
     } 
 }
 

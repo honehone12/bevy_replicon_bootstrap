@@ -12,7 +12,6 @@ use bevy_replicon_renet::{
     }, 
     RenetChannelsExt
 };
-use crate::core::network_resource::*;
 
 pub struct RenetClientBuilder {
     pub client_addr: IpAddr,
@@ -27,7 +26,7 @@ pub struct RenetClientBuilder {
 }
 
 impl RenetClientBuilder {
-    pub fn build_replicon(&self)
+    pub fn build_plugin(&self)
     -> (impl PluginGroup, impl Plugin) {
         let replicon = RepliconPlugins.build()
         .disable::<ServerPlugin>();
@@ -35,15 +34,17 @@ impl RenetClientBuilder {
         (replicon, RepliconRenetClientPlugin)
     }
 
-    pub fn build_transport(&self, net_channels: &RepliconChannels)
-    -> anyhow::Result<(Client, RenetClient, NetcodeClientTransport)> {
+    pub fn build_transport(self, world: &World)
+    -> anyhow::Result<(RenetClient, NetcodeClientTransport)> {
+        let replicon_channels = world.resource::<RepliconChannels>();
         let renet_client = RenetClient::new(ConnectionConfig{
-            server_channels_config: net_channels.get_server_configs(),
-            client_channels_config: net_channels.get_client_configs(),
+            server_channels_config: replicon_channels.get_server_configs(),
+            client_channels_config: replicon_channels.get_client_configs(),
             ..default()
         });
 
-        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
+        let current_time = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?;
         let socket = UdpSocket::bind((self.client_addr, 0))?;
         let connect_token = ConnectToken::generate(
             current_time,
@@ -56,8 +57,12 @@ impl RenetClientBuilder {
             &self.private_key
         )?;
         let auth = ClientAuthentication::Secure {connect_token};
-        let netcode_transport = NetcodeClientTransport::new(current_time, auth, socket)?;
+        let netcode_transport = NetcodeClientTransport::new(
+            current_time, 
+            auth, 
+            socket
+        )?;
         
-        Ok((Client::new(self.client_id), renet_client, netcode_transport))    
+        Ok((renet_client, netcode_transport))    
     }
 }

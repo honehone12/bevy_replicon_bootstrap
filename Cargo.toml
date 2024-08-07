@@ -24,3 +24,5 @@ serde = "1.0.203"
 bevy_rapier3d = { version = "0.27.0", default-features = false, features = ["dim3", "debug-render-3d"] }
 rapier3d = "0.21.0"
 uuid = "1.10.0"
+bevy_replicon_quinnet = "0.4.0"
+bevy_quinnet = "0.9.0"

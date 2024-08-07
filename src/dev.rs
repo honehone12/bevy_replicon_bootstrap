@@ -7,7 +7,7 @@ use anyhow::bail;
 use rand::prelude::*;
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_replicon_renet::renet::transport::NetcodeTransportError;
+//use bevy_replicon_renet::renet::transport::NetcodeTransportError;
 use bevy_rapier3d::prelude::*;
 use serde::{Serialize, Deserialize};
 use crate::prelude::*;
@@ -281,8 +281,8 @@ fn apply_gravity_system(
     }
 }
 
-pub fn handle_transport_error(mut errors: EventReader<NetcodeTransportError>) {
-    for e in errors.read() {
-        panic!("transport error: {e}")
-    }
-}
+// pub fn handle_netcode_transport_error(mut errors: EventReader<NetcodeTransportError>) {
+//     for e in errors.read() {
+//         panic!("transport error: {e}")
+//     }
+// }
