@@ -31,7 +31,7 @@ impl Plugin for GameServerPlugin {
         .add_systems(Startup, ( 
             server_setup_floor,
             server_setup_walls,
-            setup_ball
+            server_setup_obstacles
         ).chain())
         .add_systems(Update, (
             //handle_netcode_transport_error,
@@ -44,70 +44,6 @@ impl Plugin for GameServerPlugin {
             .before(ServerSet::Send)
         );
     }
-}
-
-fn setup_ball(mut commands: Commands) {
-    let ball_1 = commands.spawn((
-        Replicated,
-        Culling::Disable,
-        Ball::ServerSimulation,
-        TransformBundle::from_transform(Transform{
-            translation: BALL_POSITION_1,
-            ..default()
-        }),
-        DynamicRigidBodyBundle::new(
-            BALL_MASS, 
-            Vec3::ZERO, 
-            Vec3::ZERO
-        ),
-        NetworkTranslationBundle::<NetworkTranslation3D>::new(
-            BALL_POSITION_1, 
-            TranslationAxis::Default, 
-            0, 
-            LARGE_CACHE_SIZE
-        ).expect("sytem time looks earlier than unix epoch"),
-        NetworkRotationBundle::<NetworkEuler>::new(
-            Quat::IDENTITY, 
-            RotationAxis::Default, 
-            0, 
-            LARGE_CACHE_SIZE
-        ).expect("sytem time looks earlier than unix epoch"),
-        Collider::ball(BALL_RADIUS)
-    ))
-    .id();
-    info!("ball 1: {ball_1:?} spawned");
-
-    let ball_2 = commands.spawn((
-        Replicated,
-        Culling::Disable,
-        Ball::ClientPrediction,
-        TransformBundle::from_transform(Transform{
-            translation: BALL_POSITION_2,
-            ..default()
-        }),
-        DynamicRigidBodyBundle::new(
-            BALL_MASS, 
-            Vec3::ZERO, 
-            Vec3::ZERO
-        ),
-        NetworkTranslationBundle::<NetworkTranslation3D>::new(
-            BALL_POSITION_2, 
-            TranslationAxis::Default, 
-            0, 
-            LARGE_CACHE_SIZE
-        ).expect("sytem time looks earlier than unix epoch"),
-        NetworkRotationBundle::<NetworkEuler>::new(
-            Quat::IDENTITY, 
-            RotationAxis::Default, 
-            0, 
-            LARGE_CACHE_SIZE
-        ).expect("sytem time looks earlier than unix epoch"),
-        NetworkLinearVelocity3D::default(),
-        NetworkAngularVelocity3D::default(),
-        Collider::ball(BALL_RADIUS)
-    ))
-    .id();
-    info!("ball 2: {ball_2:?} spwaned");
 }
 
 fn handle_server_event(

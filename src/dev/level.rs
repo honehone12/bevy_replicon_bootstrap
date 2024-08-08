@@ -201,6 +201,53 @@ pub fn server_setup_walls(mut commands: Commands) {
     ));
 }
 
+pub const OBSTACLE_SIZE: Vec3 = Vec3::new(5.0, 10.0, 5.0);
+pub const OBSTACLE_POSITIONS: [Vec3; 4] = [
+    Vec3::new(7.5, 2.5, 0.0),
+    Vec3::new(-7.5, 2.5, 0.0),
+    Vec3::new(0.0, 2.5, 7.5),
+    Vec3::new(0.0, 2.5, -7.5)
+];
+
+pub fn server_setup_obstacles(mut commands: Commands) {
+    let extents = OBSTACLE_SIZE * 0.5;
+    for pos in OBSTACLE_POSITIONS {
+        commands.spawn((
+            TransformBundle::from_transform(
+                Transform::from_translation(pos)
+            ),
+            Collider::cuboid(
+                extents.x, 
+                extents.y, 
+                extents.z
+            )
+        ));
+    }
+}
+
+pub fn client_setup_obstacles(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
+) {
+    let extents = OBSTACLE_SIZE * 0.5;
+    for pos in OBSTACLE_POSITIONS {
+        commands.spawn((
+            PbrBundle{
+                mesh: meshes.add(Mesh::from(Cuboid::from_size(OBSTACLE_SIZE))),
+                material: materials.add(FLOOR_COLOR),
+                transform: Transform::from_translation(pos),
+                ..default()
+            },
+            Collider::cuboid(
+                extents.x, 
+                extents.y, 
+                extents.z
+            )
+        ));
+    }
+}
+
 pub fn setup_light(mut commands: Commands) {
     commands.spawn(DirectionalLightBundle{
         directional_light: DirectionalLight{
@@ -223,8 +270,6 @@ pub fn setup_fixed_camera(mut commands: Commands) {
         ..default()
     });
 }
-
-
 
 pub const SPAWN_POSITION_0: Vec3 = Vec3::new(-10.0, 1.5, -10.0);
 pub const SPAWN_POSITION_1: Vec3 = Vec3::new(10.0, 1.5, -10.0);

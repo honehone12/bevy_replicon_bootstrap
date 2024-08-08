@@ -90,10 +90,6 @@ pub const CHARACTER_OFFSET: f32 = 0.2;
 
 pub const BALL_MASS: f32 = 3.0;
 pub const BALL_RADIUS: f32 = 1.0;
-pub const BALL_POSITION_1: Vec3 = Vec3::new(5.0, 1.0, 0.0);
-pub const BALL_POSITION_2: Vec3 = Vec3::new(-5.0, 1.0, 0.0);
-pub const BALL_POSITION_3: Vec3 = Vec3::new(0.0, 1.0, 5.0);
-pub const BALL_POSITION_4: Vec3 = Vec3::new(0.0, 1.0, -5.0);
 pub const BALL_COLOR_1: Srgba = color_palettes::BLUE;
 pub const BALL_COLOR_2: Srgba = color_palettes::RED;
 
