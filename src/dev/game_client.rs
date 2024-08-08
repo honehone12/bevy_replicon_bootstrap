@@ -50,7 +50,7 @@ impl Plugin for GameClientPlugin {
             handle_player_spawned,
             handle_input, 
             handle_action,
-            observe_fire,
+            handle_fire,
             draw_gizmos_system
         ).chain());
     }
@@ -256,7 +256,7 @@ fn handle_player_spawned(
     } 
 }
 
-fn observe_fire(
+fn handle_fire(
     query: Query<(Entity, &Transform), With<Owning>>,
     rapier: Res<RapierContext>,
     entity_player_map: Res<EntityPlayerMap>,
