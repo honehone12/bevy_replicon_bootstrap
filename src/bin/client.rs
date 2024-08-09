@@ -1,5 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr};
 use bevy::{log::LogPlugin, prelude::*};
+//use bevy_quinnet::client::certificate::TrustOnFirstUseConfig;
 use bevy_replicon_bootstrap::{
     prelude::*,
     dev::game_client::*,
@@ -24,7 +25,10 @@ fn main() {
         server_port: DEV_SERVER_LISTEN_PORT,
         client_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
         client_port: 0,
-        cert_mode: CertificateVerificationMode::SkipVerification,
+        cert_mode: CertificateVerificationMode::SkipVerification
+        // cert_mode: CertificateVerificationMode::TrustOnFirstUse(
+        //     TrustOnFirstUseConfig::default()
+        // )
     };
     
     app.add_plugins(

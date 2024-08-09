@@ -27,9 +27,13 @@ fn main() {
         network_tick_rate: DEV_NETWORK_TICK_RATE,
         listen_addr: IpAddr::V4(Ipv4Addr::LOCALHOST),
         listen_port: DEV_SERVER_LISTEN_PORT,
-        cert_mode: CertificateRetrievalMode::GenerateSelfSigned{ 
+        cert_mode: CertificateRetrievalMode::GenerateSelfSigned { 
             server_hostname: "localhost".to_string() 
-        },
+        }
+        // cert_mode: CertificateRetrievalMode::LoadFromFile { 
+        //     cert_file: "my_certificates/server.pub.pem".to_string(),
+        //     key_file: "my_certificates/server.priv.pem".to_string() 
+        // }
     };
     
     app.add_plugins((
